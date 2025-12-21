@@ -37,3 +37,6 @@ contact_data/
 
 .env
 .env.local
+
+CLAUDE.md
+CLAUDE.local.md
