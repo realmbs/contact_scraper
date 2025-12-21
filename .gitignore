@@ -22,6 +22,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+
 # Virtual Environments
 .venv/
 venv/
@@ -31,15 +33,18 @@ env/
 # IDE
 .vscode/
 
-logs/
-institutions.csv
-scrape_contacts.log
-scrape_progress.json
-test_*.csv
-contact_data/
-
+# Environment variables
 .env
 .env.local
 
+# Local config files
 CLAUDE.md
 CLAUDE.local.md
+
+# project specific
+institutions.csv
+*.log
+scrape_progress.json
+export_summary.txt
+test_*.csv
+contacts_*.csv
