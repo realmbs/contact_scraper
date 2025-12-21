@@ -4,7 +4,6 @@ from io import StringIO
 
 def get_institutions(states) :
   # download ipeds data
-  # states: list[]
   url: str = "https://nces.ed.gov/ipeds/datacenter/data/HD2023.zip"
 
   print("Downloading IPEDS data...")
