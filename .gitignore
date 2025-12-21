@@ -33,6 +33,9 @@ env/
 
 logs/
 institutions.csv
+scrape_contacts.log
+scrape_progress.json
+test_*.csv
 contact_data/
 
 .env
