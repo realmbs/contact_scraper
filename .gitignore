@@ -48,3 +48,4 @@ scrape_progress.json
 export_summary.txt
 test_*.csv
 contacts_*.csv
+raw_*.csv
