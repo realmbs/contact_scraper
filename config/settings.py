@@ -88,6 +88,16 @@ USE_RANDOM_USER_AGENT = _get_bool('USE_RANDOM_USER_AGENT', True)
 # Browser settings
 HEADLESS_BROWSER = _get_bool('HEADLESS_BROWSER', True)
 
+# Playwright settings
+ENABLE_PLAYWRIGHT = _get_bool('ENABLE_PLAYWRIGHT', True)
+PLAYWRIGHT_TIMEOUT = _get_int('PLAYWRIGHT_TIMEOUT', 30000)  # milliseconds
+SAVE_SCREENSHOTS = _get_bool('SAVE_SCREENSHOTS', False)
+SCREENSHOTS_DIR = OUTPUT_DIR / 'screenshots'
+
+# Create screenshots directory if enabled
+if SAVE_SCREENSHOTS:
+    SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Concurrent requests
 MAX_CONCURRENT_REQUESTS = _get_int('MAX_CONCURRENT_REQUESTS', 5)
 
@@ -208,6 +218,10 @@ __all__ = [
     'MAX_DELAY',
     'USE_RANDOM_USER_AGENT',
     'HEADLESS_BROWSER',
+    'ENABLE_PLAYWRIGHT',
+    'PLAYWRIGHT_TIMEOUT',
+    'SAVE_SCREENSHOTS',
+    'SCREENSHOTS_DIR',
     'MAX_CONCURRENT_REQUESTS',
     'REQUEST_TIMEOUT',
     'LOG_LEVEL',

@@ -18,6 +18,13 @@ from loguru import logger
 from fuzzywuzzy import fuzz
 from fake_useragent import UserAgent
 
+try:
+    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+    logger.warning("Playwright not available. Install with: pip install playwright && playwright install")
+
 from config.settings import (
     LAW_SCHOOL_ROLES,
     PARALEGAL_PROGRAM_ROLES,
@@ -26,6 +33,11 @@ from config.settings import (
     REQUEST_TIMEOUT,
     RATE_LIMIT_DELAY,
     MIN_CONFIDENCE_SCORE,
+    ENABLE_PLAYWRIGHT,
+    PLAYWRIGHT_TIMEOUT,
+    SAVE_SCREENSHOTS,
+    SCREENSHOTS_DIR,
+    HEADLESS_BROWSER,
 )
 from modules.utils import (
     setup_logger,
@@ -52,6 +64,163 @@ def get_user_agent() -> str:
     if USE_RANDOM_USER_AGENT and ua:
         return ua.random
     return 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+
+
+# =============================================================================
+# Playwright Integration for JavaScript-heavy Sites
+# =============================================================================
+
+def fetch_page_with_playwright(url: str) -> Optional[BeautifulSoup]:
+    """
+    Fetch a web page using Playwright (headless browser with JavaScript support).
+
+    Args:
+        url: URL to fetch
+
+    Returns:
+        BeautifulSoup object or None if failed
+    """
+    if not PLAYWRIGHT_AVAILABLE or not ENABLE_PLAYWRIGHT:
+        return None
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=HEADLESS_BROWSER)
+            context = browser.new_context(
+                user_agent=get_user_agent(),
+                viewport={'width': 1920, 'height': 1080}
+            )
+            page = context.new_page()
+
+            logger.info(f"Fetching with Playwright: {url}")
+
+            # Navigate to page (use domcontentloaded for better reliability)
+            page.goto(url, wait_until='domcontentloaded', timeout=PLAYWRIGHT_TIMEOUT)
+
+            # Wait for common content selectors to appear
+            common_selectors = [
+                '.profile', '.person', '.staff', '.faculty', '.contact',
+                '[class*="profile"]', '[class*="person"]', '[class*="staff"]',
+                'table', '.directory', '[role="main"]'
+            ]
+
+            for selector in common_selectors:
+                try:
+                    page.wait_for_selector(selector, timeout=3000)
+                    logger.debug(f"Found selector: {selector}")
+                    break
+                except PlaywrightTimeoutError:
+                    continue
+
+            # Additional wait for dynamic content
+            page.wait_for_timeout(2000)
+
+            # Get page content
+            content = page.content()
+
+            # Save screenshot if enabled
+            if SAVE_SCREENSHOTS:
+                screenshot_path = SCREENSHOTS_DIR / f"{extract_domain(url)}_{get_timestamp()}.png"
+                page.screenshot(path=str(screenshot_path))
+                logger.debug(f"Screenshot saved: {screenshot_path}")
+
+            browser.close()
+
+            soup = BeautifulSoup(content, 'html.parser')
+            logger.success(f"Successfully fetched with Playwright: {url}")
+            return soup
+
+    except PlaywrightTimeoutError as e:
+        logger.error(f"Playwright timeout for {url}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Playwright error for {url}: {e}")
+        return None
+
+
+def fetch_page_static(url: str) -> Optional[BeautifulSoup]:
+    """
+    Fetch a web page using requests (static HTML only).
+
+    Args:
+        url: URL to fetch
+
+    Returns:
+        BeautifulSoup object or None if failed
+    """
+    import requests
+
+    headers = {
+        'User-Agent': get_user_agent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+    }
+
+    try:
+        logger.info(f"Fetching (static): {url}")
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+        logger.success(f"Successfully fetched (static): {url}")
+        return soup
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch {url}: {e}")
+        return None
+
+
+def fetch_page_smart(url: str, force_playwright: bool = False) -> Optional[BeautifulSoup]:
+    """
+    Smart page fetching: try static first, fall back to Playwright if needed.
+
+    Args:
+        url: URL to fetch
+        force_playwright: Skip static fetch and use Playwright directly
+
+    Returns:
+        BeautifulSoup object or None if failed
+    """
+    if force_playwright and ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
+        return fetch_page_with_playwright(url)
+
+    # Try static first (faster)
+    soup = fetch_page_static(url)
+
+    if soup:
+        # Check if page has meaningful contact content
+        # Look for indicators that contacts are actually present
+        text_content = soup.get_text(strip=True)
+
+        # Count potential contact indicators
+        has_emails = len(soup.find_all('a', href=re.compile(r'mailto:', re.I)))
+        has_contact_sections = len(soup.find_all(['div', 'section', 'article'], class_=lambda x: x and any(
+            keyword in str(x).lower() for keyword in ['profile', 'person', 'staff', 'faculty', 'contact']
+        )))
+
+        # If page seems to have actual contact data, use it
+        if has_emails > 5 or has_contact_sections > 5:
+            logger.debug(f"Page has contact indicators (emails: {has_emails}, sections: {has_contact_sections})")
+            return soup
+
+        # If page is empty or lacks contact data, try Playwright
+        if len(text_content) < 500 or (has_emails == 0 and has_contact_sections == 0):
+            logger.info(f"Page lacks contact data (chars: {len(text_content)}, emails: {has_emails}, sections: {has_contact_sections}), trying Playwright...")
+            if ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
+                playwright_soup = fetch_page_with_playwright(url)
+                if playwright_soup:
+                    return playwright_soup
+
+        return soup
+
+    # Static fetch failed, try Playwright
+    if ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
+        logger.info("Static fetch failed, trying Playwright...")
+        return fetch_page_with_playwright(url)
+
+    return None
 
 
 # =============================================================================
@@ -472,19 +641,32 @@ def extract_contact_from_section(
     email = None
     phone = None
 
-    # Look for name in common heading tags or class names
-    for tag in section.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'b', 'span', 'div']):
-        classes = ' '.join(tag.get('class', [])).lower()
-        tag_text = clean_text(tag.get_text())
+    # Strategy 1: Look for semantic HTML (schema.org) attributes
+    name_tag = section.find(attrs={'itemprop': 'name'})
+    if name_tag:
+        name = clean_text(name_tag.get_text())
 
-        if any(keyword in classes for keyword in ['name', 'title', 'heading']):
-            if not name and len(tag_text) > 3 and len(tag_text.split()) >= 2:
-                # Likely a name
-                name = tag_text
+    # Look for job title with semantic markup
+    title_tags = section.find_all(attrs={'itemprop': 'jobTitle'})
+    if title_tags:
+        # Collect all titles (people may have multiple)
+        titles = [clean_text(t.get_text()) for t in title_tags]
+        title = ' | '.join(titles) if titles else None
 
-        if any(keyword in classes for keyword in ['title', 'position', 'role', 'job']):
-            if tag_text and len(tag_text) > 5:
-                title = tag_text
+    # Strategy 2: Look for name in common heading tags or class names
+    if not name:
+        for tag in section.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'b', 'span', 'div']):
+            classes = ' '.join(tag.get('class', [])).lower()
+            tag_text = clean_text(tag.get_text())
+
+            if any(keyword in classes for keyword in ['name', 'title', 'heading']):
+                if not name and len(tag_text) > 3 and len(tag_text.split()) >= 2:
+                    # Likely a name
+                    name = tag_text
+
+            if not title and any(keyword in classes for keyword in ['title', 'position', 'role', 'job']):
+                if tag_text and len(tag_text) > 5:
+                    title = tag_text
 
     # If no structured name found, try heuristics
     if not name:
@@ -500,16 +682,31 @@ def extract_contact_from_section(
                         name = line
                         break
 
-    # Extract email
-    email_tag = section.find('a', href=re.compile(r'mailto:', re.I))
+    # Extract email (try semantic markup first)
+    email_tag = section.find('a', attrs={'itemprop': 'email'})
+    if not email_tag:
+        email_tag = section.find('a', href=re.compile(r'mailto:', re.I))
+
     if email_tag:
-        email = email_tag['href'].replace('mailto:', '').strip()
+        email = email_tag.get('href', '').replace('mailto:', '').strip()
+        if not email:
+            email = clean_text(email_tag.get_text())
     else:
         # Try extracting from text
         email = extract_email(text)
 
-    # Extract phone
-    phone = extract_phone(text)
+    # Extract phone (try semantic markup first)
+    phone_tag = section.find('a', attrs={'itemprop': 'telephone'})
+    if not phone_tag:
+        phone_tag = section.find('a', href=re.compile(r'tel:', re.I))
+
+    if phone_tag:
+        phone_text = phone_tag.get('href', '').replace('tel:', '').strip()
+        if not phone_text:
+            phone_text = clean_text(phone_tag.get_text())
+        phone = phone_text
+    else:
+        phone = extract_phone(text)
 
     # Look for title if not found
     if not title:
@@ -658,17 +855,12 @@ def scrape_institution_contacts(
         prog_type_short = 'paralegal'
 
     try:
-        # Fetch homepage
-        import requests
-        headers = {
-            'User-Agent': get_user_agent(),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        }
+        # Fetch homepage using smart fetching (static first, Playwright fallback)
+        soup = fetch_page_smart(institution_url)
 
-        response = requests.get(institution_url, headers=headers, timeout=REQUEST_TIMEOUT)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.content, 'html.parser')
+        if not soup:
+            logger.error(f"Failed to fetch homepage for {institution_name}")
+            return pd.DataFrame()
 
         # Find directory pages
         directory_urls = find_directory_pages(institution_url, soup, prog_type_short)
@@ -684,9 +876,12 @@ def scrape_institution_contacts(
             time.sleep(RATE_LIMIT_DELAY)
 
             try:
-                dir_response = requests.get(dir_url, headers=headers, timeout=REQUEST_TIMEOUT)
-                dir_response.raise_for_status()
-                dir_soup = BeautifulSoup(dir_response.content, 'html.parser')
+                # Use smart fetching for directory pages too
+                dir_soup = fetch_page_smart(dir_url)
+
+                if not dir_soup:
+                    logger.error(f"Failed to fetch {dir_url}")
+                    continue
 
                 contacts = extract_contacts_from_page(
                     dir_url,
