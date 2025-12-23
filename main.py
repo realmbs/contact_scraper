@@ -16,6 +16,7 @@ from config.settings import validate_config, OUTPUT_DIR
 from modules.utils import setup_logger, save_dataframe
 from modules.target_discovery import get_all_targets
 from modules.contact_extractor import scrape_multiple_institutions
+from modules.email_validator import enrich_contact_data
 
 
 # US State Abbreviations
@@ -246,6 +247,16 @@ def main():
 
         contacts = scrape_multiple_institutions(targets, max_institutions=max_institutions)
 
+        # Phase 3: Email Validation & Enrichment (if contacts found)
+        if not contacts.empty:
+            print("\n" + "=" * 70)
+            print("PHASE 3: EMAIL VALIDATION & ENRICHMENT")
+            print("=" * 70)
+            print()
+
+            # Enrich contact data with email validation
+            contacts = enrich_contact_data(contacts)
+
         # Display contact extraction results
         print("\n" + "=" * 70)
         print("CONTACT EXTRACTION RESULTS")
@@ -275,6 +286,21 @@ def main():
             print(f"Contacts with email: {emails_found} ({emails_found/len(contacts)*100:.1f}%)")
             print(f"Contacts with phone: {phones_found} ({phones_found/len(contacts)*100:.1f}%)")
             print()
+
+            # Email validation stats (if Phase 3 completed)
+            if 'email_status' in contacts.columns:
+                validated = len(contacts[contacts['email_status'].isin(['valid', 'deliverable'])])
+                catchall = len(contacts[contacts['email_is_catchall'] == True])
+                invalid = len(contacts[contacts['email_status'].isin(['invalid', 'undeliverable'])])
+
+                print("Email Quality:")
+                if emails_found > 0:
+                    print(f"  Validated deliverable: {validated} ({validated/emails_found*100:.1f}%)")
+                    print(f"  Catch-all domains: {catchall} ({catchall/emails_found*100:.1f}%)")
+                    print(f"  Invalid: {invalid} ({invalid/emails_found*100:.1f}%)")
+                else:
+                    print("  No emails to validate")
+                print()
 
             # Confidence distribution
             high_conf = len(contacts[contacts['confidence_score'] >= 75])
