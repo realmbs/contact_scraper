@@ -1,0 +1,38 @@
+# Core Scraping Framework
+scrapy>=2.11.0
+scrapy-playwright>=0.0.34
+playwright>=1.40.0
+
+# HTML Parsing & HTTP
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+selenium>=4.7.0
+
+# Data Processing & Output
+pandas>=2.1.0
+openpyxl>=3.1.0
+
+# Email Finding & Validation (Optional - activate with API keys)
+pyhunter>=1.7
+# zerobounce>=0.1.4  # Optional - install manually if needed (requires pypandoc)
+# Alternative: Use NeverBounce API or other email validation service
+
+# Configuration & Environment
+python-dotenv>=1.0.0
+
+# Logging & Progress
+loguru>=0.7.0
+tqdm>=4.66.0
+
+# Text Matching & Utilities
+fuzzywuzzy>=0.18.0
+python-Levenshtein>=0.23.0
+fake-useragent>=1.4.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Additional utilities
+requests-cache>=1.1.0
+lxml>=4.9.0
