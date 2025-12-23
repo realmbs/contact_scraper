@@ -2,8 +2,8 @@
 """
 Legal Education Contact Scraper - Main CLI Interface
 
-Phase 1: Target Discovery
-Discovers law schools and paralegal programs for scraping.
+Complete workflow: Target Discovery + Contact Extraction
+Discovers institutions and extracts contact information.
 """
 
 import sys
@@ -15,6 +15,7 @@ from tqdm import tqdm
 from config.settings import validate_config, OUTPUT_DIR
 from modules.utils import setup_logger, save_dataframe
 from modules.target_discovery import get_all_targets
+from modules.contact_extractor import scrape_multiple_institutions
 
 
 # US State Abbreviations
@@ -31,7 +32,7 @@ def print_banner():
     """Print application banner."""
     print("=" * 70)
     print(" " * 15 + "LEGAL EDUCATION CONTACT SCRAPER")
-    print(" " * 22 + "Phase 1: Target Discovery")
+    print(" " * 18 + "Target Discovery + Contact Extraction")
     print("=" * 70)
     print()
 
@@ -98,6 +99,54 @@ def get_user_input_program_type() -> str:
         return 'both'
 
 
+def get_user_input_mode() -> str:
+    """
+    Get execution mode from user input.
+
+    Returns:
+        'discovery' or 'full'
+    """
+    print("\nWhat would you like to do?")
+    print("  1. Discovery only (find institutions)")
+    print("  2. Full extraction (discovery + contact scraping) (default)")
+    print()
+
+    user_input = input("Choice [1-2]: ").strip()
+
+    if user_input == '1':
+        return 'discovery'
+    else:
+        return 'full'
+
+
+def get_max_institutions() -> Optional[int]:
+    """
+    Get maximum number of institutions to scrape.
+
+    Returns:
+        Integer limit or None for all
+    """
+    print("\nHow many institutions would you like to scrape?")
+    print("  - Enter a number (e.g., 5)")
+    print("  - Press Enter for all discovered institutions")
+    print()
+
+    user_input = input("Limit: ").strip()
+
+    if not user_input:
+        return None
+
+    try:
+        limit = int(user_input)
+        if limit <= 0:
+            logger.warning("Invalid limit, using all institutions")
+            return None
+        return limit
+    except ValueError:
+        logger.warning("Invalid input, using all institutions")
+        return None
+
+
 def main():
     """Main entry point for the scraper."""
     # Setup logging
@@ -114,24 +163,32 @@ def main():
     # Get user input
     states = get_user_input_states()
     program_type = get_user_input_program_type()
+    mode = get_user_input_mode()
+
+    max_institutions = None
+    if mode == 'full':
+        max_institutions = get_max_institutions()
 
     # Confirm settings
     print("\n" + "=" * 70)
     print("CONFIGURATION SUMMARY")
     print("=" * 70)
+    print(f"Mode: {mode.upper()}")
     print(f"States: {', '.join(states) if states else 'ALL'}")
     print(f"Program Type: {program_type.upper()}")
+    if mode == 'full':
+        print(f"Institution Limit: {max_institutions if max_institutions else 'ALL'}")
     print("=" * 70)
     print()
 
-    confirm = input("Proceed with target discovery? [Y/n]: ").strip().lower()
+    confirm = input("Proceed? [Y/n]: ").strip().lower()
     if confirm and confirm not in ['y', 'yes']:
         logger.info("Operation cancelled by user")
         return
 
     # Run target discovery
     print("\n" + "=" * 70)
-    print("DISCOVERING TARGETS")
+    print("PHASE 1: DISCOVERING TARGETS")
     print("=" * 70)
     print()
 
@@ -142,7 +199,7 @@ def main():
             logger.error("No targets found")
             return
 
-        # Display results
+        # Display discovery results
         print("\n" + "=" * 70)
         print("DISCOVERY RESULTS")
         print("=" * 70)
@@ -158,23 +215,109 @@ def main():
             print(f"  {state}: {count}")
         print()
 
-        # Save results
-        print("Saving results...")
-        output_file = save_dataframe(
+        # Save targets
+        print("Saving targets...")
+        targets_file = save_dataframe(
             targets,
             'targets_discovered.csv',
             output_dir=OUTPUT_DIR,
             add_timestamp=True
         )
+        logger.success(f"Targets saved to: {targets_file}")
 
+        # If discovery only, stop here
+        if mode == 'discovery':
+            print("\n" + "=" * 70)
+            print("DISCOVERY COMPLETE")
+            print("=" * 70)
+            print(f"Results saved to: {targets_file}")
+            print()
+            print("Next Steps:")
+            print("  - Review the discovered targets")
+            print("  - Run in 'Full extraction' mode to scrape contacts")
+            print("=" * 70)
+            return
+
+        # Phase 2: Contact Extraction
         print("\n" + "=" * 70)
-        print("PHASE 1 COMPLETE")
+        print("PHASE 2: EXTRACTING CONTACTS")
         print("=" * 70)
-        print(f"Results saved to: {output_file}")
+        print()
+
+        contacts = scrape_multiple_institutions(targets, max_institutions=max_institutions)
+
+        # Display contact extraction results
+        print("\n" + "=" * 70)
+        print("CONTACT EXTRACTION RESULTS")
+        print("=" * 70)
+
+        if contacts.empty:
+            print("No contacts extracted.")
+            print()
+            print("Common reasons:")
+            print("  - Anti-scraping measures (403 Forbidden)")
+            print("  - JavaScript-heavy sites (need Playwright)")
+            print("  - Outdated URLs or changed website structures")
+            print()
+            print("Recommendations:")
+            print("  - Try fewer institutions for testing")
+            print("  - Check logs for specific errors")
+            print("  - Consider enabling Playwright for JavaScript sites")
+        else:
+            print(f"Total Contacts: {len(contacts)}")
+            print(f"  Law Schools: {len(contacts[contacts['program_type'] == 'Law School'])}")
+            print(f"  Paralegal Programs: {len(contacts[contacts['program_type'] == 'Paralegal Program'])}")
+            print()
+
+            # Email and phone stats
+            emails_found = len(contacts[contacts['email'] != ''])
+            phones_found = len(contacts[contacts['phone'] != ''])
+            print(f"Contacts with email: {emails_found} ({emails_found/len(contacts)*100:.1f}%)")
+            print(f"Contacts with phone: {phones_found} ({phones_found/len(contacts)*100:.1f}%)")
+            print()
+
+            # Confidence distribution
+            high_conf = len(contacts[contacts['confidence_score'] >= 75])
+            med_conf = len(contacts[(contacts['confidence_score'] >= 50) & (contacts['confidence_score'] < 75)])
+            low_conf = len(contacts[contacts['confidence_score'] < 50])
+
+            print("Confidence Distribution:")
+            print(f"  High (75+):     {high_conf} ({high_conf/len(contacts)*100:.1f}%)")
+            print(f"  Medium (50-74): {med_conf} ({med_conf/len(contacts)*100:.1f}%)")
+            print(f"  Low (<50):      {low_conf} ({low_conf/len(contacts)*100:.1f}%)")
+            print()
+
+            # Top matched roles
+            role_counts = contacts['matched_role'].value_counts()
+            if not role_counts.empty:
+                print("Top Matched Roles:")
+                for role, count in role_counts.head(5).items():
+                    if role:
+                        print(f"  {role}: {count}")
+                print()
+
+            # Save contacts
+            print("Saving contacts...")
+            contacts_file = save_dataframe(
+                contacts,
+                'contacts_raw.csv',
+                output_dir=OUTPUT_DIR,
+                add_timestamp=True
+            )
+            logger.success(f"Contacts saved to: {contacts_file}")
+
+        # Final summary
+        print("\n" + "=" * 70)
+        print("EXTRACTION COMPLETE")
+        print("=" * 70)
+        print(f"Targets saved to: {targets_file}")
+        if not contacts.empty:
+            print(f"Contacts saved to: {contacts_file}")
         print()
         print("Next Steps:")
-        print("  - Review the discovered targets")
-        print("  - Proceed to Phase 2: Contact Extraction (coming soon)")
+        print("  - Review extracted contacts")
+        if not contacts.empty:
+            print("  - Proceed to Phase 3: Email Validation & Enrichment")
         print("=" * 70)
 
     except KeyboardInterrupt:
