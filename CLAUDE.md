@@ -1,0 +1,582 @@
+# Legal Education Contact Scraper - Implementation Plan
+
+**Created**: 2025-12-23
+**Status**: Ready to Begin Implementation
+**Priority**: Quality data over speed
+
+---
+
+## Project Overview
+
+An intelligent web scraper to discover contacts at Law Schools and Paralegal Programs with minimal manual review required. The system uses modular architecture with intelligent filtering, validation, and confidence scoring throughout the pipeline.
+
+**Key Features**:
+- Scrapes ABA-accredited law schools and paralegal programs
+- Intelligent title matching with fuzzy logic
+- Email validation and enrichment via APIs
+- Deduplication and comparison with existing databases
+- Confidence scoring system (0-100) for quality assurance
+- Excel output with comprehensive statistics
+
+---
+
+## System Architecture
+
+```
+[User Input] → [Target Discovery] → [Contact Extraction] → [Enrichment/Validation] → [Deduplication] → [Output]
+     ↓              ↓                      ↓                        ↓                      ↓            ↓
+  State(s)     Find Programs         Scrape Contacts         Verify Emails          Clean Data     Excel File
+  Program Type  Verify Status        Extract Names/Titles    Enrich Data           Match Existing  +Stats
+```
+
+---
+
+## Module Structure
+
+### Module 1: Target Discovery Engine
+**File**: `modules/target_discovery.py`
+
+**Purpose**: Build comprehensive list of institutions to scrape
+
+**Key Functions**:
+- `get_aba_law_schools(states: list) -> DataFrame` - Scrape ABA official list
+- `get_paralegal_programs(states: list) -> DataFrame` - Query AAfPE directory, state systems
+- URL validation and deduplication
+
+**Output**: `targets_[timestamp].csv`
+
+**Data Sources**:
+- ABA Official List: https://www.americanbar.org/groups/legal_education/resources/aba_approved_law_schools/
+- AAfPE Directory: https://www.aafpe.org/
+- State Community College Systems
+- Department of Education IPEDS Database
+
+---
+
+### Module 2: Contact Extraction Engine
+**File**: `modules/contact_extractor.py`
+
+**Purpose**: Scrape individual institution websites for target contacts
+
+**Key Functions**:
+- `find_directory_pages(base_url: str) -> list` - Search for common directory patterns
+- `extract_contacts(page_url: str, target_roles: list) -> list` - Parse directory pages
+- `build_email_from_pattern(name: str, domain: str, pattern: str) -> str` - Construct emails
+
+**Target Roles**:
+- **Law Schools**: Library Director, Associate Dean for Academic Affairs, Legal Writing Director, Experiential Learning Director, Instructional Technology Librarian
+- **Paralegal Programs**: Paralegal Program Director, Dean of Workforce Programs, Legal Studies Faculty, Program Chair
+
+**Title Matching Intelligence**:
+- Fuzzy matching + keyword detection
+- Not exact string matching
+- Confidence scoring for relevance
+
+**Output**: `contacts_raw_[timestamp].csv`
+
+---
+
+### Module 3: Email Enrichment & Validation Engine
+**File**: `modules/email_validator.py`
+
+**Purpose**: Find missing emails and validate all email addresses
+
+**Key Functions**:
+- `find_missing_emails(contact_df: DataFrame) -> DataFrame` - Hunter.io, Clearbit, pattern construction
+- `validate_emails(email_list: list) -> DataFrame` - Batch validation through ZeroBounce/NeverBounce
+- `enrich_contact_data(contact_df: DataFrame) -> DataFrame` - LinkedIn profiles, verify employment
+
+**API Integrations**:
+- Hunter.io (50 free searches/month trial)
+- ZeroBounce or NeverBounce (100-1000 free validations)
+- Proxycurl for LinkedIn (optional, $0.08/profile)
+
+**Quality Thresholds**:
+- Only include contacts with email present AND (valid OR catch-all with score >70)
+- OR confidence_score >= 80 for pattern-constructed emails
+
+**Output**: `contacts_validated_[timestamp].csv`
+
+---
+
+### Module 4: Deduplication & Matching Engine
+**File**: `modules/deduplication.py`
+
+**Purpose**: Remove duplicates and compare against existing database
+
+**Key Functions**:
+- `deduplicate_contacts(new_contacts: DataFrame) -> DataFrame` - Internal deduplication
+- `compare_with_existing(new_contacts: DataFrame, existing_file: str) -> tuple` - Compare with existing DB
+- `merge_strategy(existing_record, new_record) -> dict` - Handle conflicts
+
+**Outputs**:
+- `contacts_new_[timestamp].csv` - Brand new contacts
+- `contacts_duplicates_[timestamp].csv` - Already in database
+- `contacts_updates_[timestamp].csv` - Existing contacts with new info
+
+---
+
+### Module 5: Main Orchestrator
+**File**: `main.py`
+
+**Purpose**: User interface and workflow orchestration
+
+**User Input Flow**:
+1. Select states (comma-separated)
+2. Select program type (Law Schools, Paralegal, Both)
+3. Optional: Provide existing database for comparison
+4. Review configuration summary
+5. Execute workflow with progress tracking
+
+**Workflow Execution**:
+1. Load configuration
+2. Run target discovery (with progress bar)
+3. For each institution: attempt contact extraction, log results, cache
+4. Email finding for missing emails
+5. Batch email validation
+6. Deduplication
+7. Comparison with existing DB
+8. Generate outputs + statistics report
+
+---
+
+## Confidence Scoring System
+
+Each contact gets a confidence score (0-100):
+
+```
++40 points: Email found on official institution website
++30 points: Email validated as deliverable
++20 points: Title exactly matches target role
++10 points: LinkedIn profile confirms current employment
++10 points: Phone number found
+-20 points: Email is catch-all domain
+-30 points: Email constructed from pattern (not verified)
+```
+
+**Contacts with score < 50 flagged for manual review**
+
+---
+
+## Implementation Roadmap
+
+### Phase 1: Foundation (Sprint 1) - Days 1-2
+**Status**: READY TO START
+
+Tasks:
+- [x] Create CLAUDE.md with implementation plan
+- [ ] Set up project directory structure
+  - `/modules/` - Main modules
+  - `/config/` - API keys and settings
+  - `/output/` - Generated files
+  - `/logs/` - Execution logs
+  - `/tests/` - Test cases
+- [ ] Create requirements.txt with all dependencies
+- [ ] Create config management system (.env, API key handling)
+- [ ] Build Target Discovery module for ABA law schools
+- [ ] Build Target Discovery module for paralegal programs
+- [ ] Create utility functions (logging, caching, rate limiting)
+- [ ] Test on 2-3 states, verify institution lists
+
+**Deliverable**: Working target discovery producing accurate institution lists
+
+---
+
+### Phase 2: Core Scraping (Sprint 2) - Days 3-4
+
+Tasks:
+- [ ] Build Contact Extraction module
+- [ ] Implement adaptive scraping strategies
+- [ ] Build title matching logic with test cases
+- [ ] Test on 5-10 institutions per program type
+- [ ] Refine HTML parsing for common website structures
+
+**Deliverable**: Extract 20+ contacts with titles and emails from test institutions
+
+---
+
+### Phase 3: Email Intelligence (Sprint 3) - Days 5-6
+
+Tasks:
+- [ ] Build Email Validation module
+- [ ] Integrate Hunter.io API
+- [ ] Integrate email validation API (ZeroBounce or NeverBounce)
+- [ ] Implement email pattern detection
+- [ ] Test email construction accuracy (validate constructed emails)
+
+**Deliverable**: 80%+ of contacts have validated email addresses
+
+---
+
+### Phase 4: Quality & Integration (Sprint 4) - Days 7-8
+
+Tasks:
+- [ ] Build Deduplication module
+- [ ] Implement confidence scoring system
+- [ ] Build comparison with existing database
+- [ ] Create main orchestrator with user input
+- [ ] Build output formatting (match existing Excel structure)
+
+**Deliverable**: End-to-end working system with quality controls
+
+---
+
+### Phase 5: Testing & Refinement (Sprint 5) - Days 9-10
+
+Tasks:
+- [ ] Full test run on 3-5 states
+- [ ] Manual validation of 20% of results
+- [ ] Tune confidence score thresholds
+- [ ] Optimize performance (parallel processing)
+- [ ] Add statistics dashboard
+- [ ] Write API integration guide and setup documentation
+
+**Deliverable**: Production-ready scraper with documentation
+
+---
+
+## Technical Stack
+
+### Core Libraries
+```
+scrapy              # Professional-grade scraping framework
+selenium            # JavaScript-heavy sites
+playwright          # Modern alternative to Selenium
+beautifulsoup4      # HTML parsing
+requests            # HTTP requests
+requests-cache      # Avoid duplicate requests
+pandas              # Data manipulation
+openpyxl            # Excel output
+```
+
+### Email & Validation
+```
+emailhunter         # Python wrapper for Hunter.io
+zerobounce          # Email validation
+neverbounce         # Alternative email validation
+clearbit            # Email enrichment (optional)
+```
+
+### Quality & Utilities
+```
+ratelimit           # Rate limiting
+fake-useragent      # Rotate user agents
+fuzzywuzzy          # Fuzzy string matching
+python-Levenshtein  # String distance calculations
+python-dotenv       # Environment variable management
+tqdm                # Progress bars
+loguru              # Better logging
+```
+
+---
+
+## Expected Performance Metrics
+
+### Output Quality Targets
+- Email validity rate: >90% valid or catch-all
+- Title relevance: >85% match target roles
+- Manual review required: <10% of total contacts
+- Duplicate rate: <5% internal duplicates
+- Coverage: 80%+ of institutions yield at least 1 contact
+
+### Processing Speed (estimated)
+- Target Discovery: 5-10 minutes for 25 states
+- Contact Extraction: 30-60 seconds per institution
+  - Law Schools: ~2-3 hours for 50 schools
+  - Paralegal Programs: ~5-8 hours for 200 programs
+- Email Validation: 1-2 hours (API dependent)
+- **Total Runtime**: 8-12 hours for comprehensive 25-state scrape (can be parallelized to 3-4 hours)
+
+### Expected Yield (per 25 states)
+- Law Schools: 50-70 schools × 3-5 contacts = 150-350 contacts
+- Paralegal Programs: 200-300 programs × 2-4 contacts = 400-1200 contacts
+- **Total: 550-1550 high-quality contacts**
+
+---
+
+## Key Decision Points
+
+### Before Starting Implementation
+
+1. **Python Version**
+   - Recommended: Python 3.10+
+   - Needed for modern async libraries and type hints
+
+2. **Scraping Library Choice**
+   - Option A: Scrapy (powerful, professional-grade, steeper learning curve)
+   - Option B: Playwright + BeautifulSoup (modern, handles JavaScript well, simpler)
+   - **Recommendation**: Start with Playwright for ease, switch to Scrapy if scaling needed
+
+3. **Storage Strategy**
+   - MVP: CSV/Excel only
+   - Scale: Add SQLite for >5000 contacts
+   - **Recommendation**: Start with CSV/Excel, add SQLite in Sprint 4 if needed
+
+4. **API Registration Priority**
+   - Required Immediately: None (can test scraping without APIs)
+   - Sprint 3: Hunter.io (email finding), ZeroBounce/NeverBounce (validation)
+   - Optional: Proxycurl (LinkedIn enrichment)
+   - **Recommendation**: Register for APIs at start of Sprint 3
+
+---
+
+## Design Decisions - Finalized
+**Date**: 2025-12-23
+**Status**: Approved and Ready for Implementation
+
+### Core Technical Stack (FINAL)
+
+1. **Python Version**: Python 3.10+
+   - Modern features, better type hints, good async support
+   - Required for optimal Scrapy and Playwright integration
+
+2. **Scraping Framework**: Scrapy + Playwright
+   - Use Scrapy as the core scraping framework (professional-grade, fast)
+   - Integrate Playwright for headless browser support (always enabled)
+   - Handles JavaScript-heavy sites automatically
+   - Best of both worlds: Scrapy's power + Playwright's JS handling
+
+3. **Data Storage**: CSV/Excel Only
+   - No SQLite database for MVP
+   - Simple CSV files for intermediate results
+   - Excel output for final deliverables
+   - Easier manual review and integration with existing workflow
+
+4. **API Integrations**: All Three (Optional)
+   - **Hunter.io** - Email finding for missing emails
+   - **ZeroBounce/NeverBounce** - Email validation
+   - **Proxycurl** - LinkedIn enrichment and employment verification
+   - **CRITICAL**: System must work WITHOUT API keys
+   - APIs are optional enhancements that activate when keys are provided
+   - Graceful degradation when APIs unavailable
+
+### Implementation Details (FINAL)
+
+5. **Rate Limiting Strategy**: Adaptive
+   - Start with conservative delays (5-10s)
+   - Monitor response times and status codes
+   - Speed up if no issues detected (down to 2-3s)
+   - Slow down if encountering errors or timeouts
+   - Per-domain rate limiting (different sites get different rates)
+
+6. **JavaScript Handling**: Always Use Headless Browser
+   - Scrapy + Playwright integration from day one
+   - Don't bother with static-first approach
+   - Simpler implementation, handles all sites consistently
+   - Playwright runs in headless mode for performance
+
+7. **Logging Level**: Standard (Key Events)
+   - Log successful extractions
+   - Log errors and failures with reasons
+   - Log important decisions (e.g., confidence score calculations)
+   - Don't log every single request (too verbose)
+   - Don't skip error details (too minimal)
+   - Balance between debuggability and readability
+
+8. **Existing Database Comparison**: Optional Feature
+   - User can provide existing contacts file for comparison
+   - If not provided, skip comparison step
+   - Always perform internal deduplication regardless
+   - Output separate files for: new contacts, duplicates, updates
+
+### Output Specifications (FINAL)
+
+9. **Excel File Structure**: Comprehensive Multi-Sheet
+   - **Sheet 1**: All Contacts (every contact with all fields)
+   - **Sheet 2**: Law School Contacts (filtered by type)
+   - **Sheet 3**: Paralegal Program Contacts (filtered by type)
+   - **Sheet 4**: High Confidence (score ≥ 75)
+   - **Sheet 5**: Medium Confidence (score 50-74)
+   - **Sheet 6**: Needs Review (score < 50)
+   - **Sheet 7**: Statistics Summary
+   - **Sheet 8**: Scraping Log (successes, failures, reasons)
+
+10. **Statistics Dashboard**: All Four Metrics
+    - **Counts by state/type**: Number of contacts per state, per program type
+    - **Email quality metrics**: % validated emails, catch-all domains, constructed emails
+    - **Confidence score distribution**: Histogram of scores (0-50, 51-75, 76-100)
+    - **Scraping success rate**: % institutions yielding contacts, failure reasons breakdown
+
+11. **Caching Strategy**: Institution Lists Only
+    - Cache target discovery results (institution lists)
+    - Save to `/output/cache/targets_[timestamp].csv`
+    - Allow reusing cached lists on subsequent runs
+    - Don't cache scraped contact data (always fresh scrape)
+    - Lighter caching, simpler implementation
+
+### Technical Specifications
+
+**Scrapy + Playwright Integration**:
+```python
+# Use scrapy-playwright middleware
+DOWNLOAD_HANDLERS = {
+    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+}
+```
+
+**Adaptive Rate Limiting Algorithm**:
+```python
+# Pseudocode
+initial_delay = 5.0  # seconds
+min_delay = 2.0
+max_delay = 10.0
+
+if success_rate > 0.95 and avg_response_time < 2.0:
+    delay = max(min_delay, current_delay * 0.8)
+elif errors_detected or avg_response_time > 5.0:
+    delay = min(max_delay, current_delay * 1.5)
+```
+
+**API Integration Pattern**:
+```python
+# All API functions check for keys first
+def find_email_with_hunter(name, domain):
+    if not HUNTER_API_KEY:
+        logger.info("Hunter.io API key not found, skipping")
+        return None
+    # ... proceed with API call
+```
+
+### Updated Requirements
+
+**Core Dependencies**:
+- scrapy >= 2.11.0
+- scrapy-playwright >= 0.0.34
+- playwright >= 1.40.0
+- beautifulsoup4 >= 4.12.0
+- pandas >= 2.1.0
+- openpyxl >= 3.1.0
+
+**API Client Libraries** (optional):
+- python-hunter >= 3.2.0 (Hunter.io)
+- zerobounce >= 2.0.0 (email validation)
+- requests >= 2.31.0 (Proxycurl HTTP client)
+
+**Utilities**:
+- python-dotenv >= 1.0.0
+- loguru >= 0.7.0
+- tqdm >= 4.66.0
+- fuzzywuzzy >= 0.18.0
+- python-Levenshtein >= 0.23.0
+- fake-useragent >= 1.4.0
+
+### Decision Rationale
+
+**Why Scrapy over simpler alternatives?**
+- Professional-grade framework used in production by major companies
+- Built-in crawling logic, middleware system, robust error handling
+- Better performance for scraping hundreds of institutions
+- Worth the learning curve for a production system
+
+**Why always use headless browser?**
+- Law school and college websites often use modern JS frameworks
+- Trying static-first adds complexity with detection logic
+- Playwright overhead is acceptable for this use case
+- Consistency is more valuable than micro-optimizations
+
+**Why CSV/Excel only (no database)?**
+- Simpler to review and validate manually
+- Easier to share results
+- Sufficient for expected volume (<2000 contacts per run)
+- Can always add database later if scaling up
+
+**Why make APIs optional?**
+- Allows testing core scraping immediately
+- No dependency on API trial availability
+- Easier for others to use/fork the project
+- Progressive enhancement approach
+
+---
+
+## API Cost Management
+
+### Free Trial Strategy
+- Hunter.io: 50 free searches/month
+- ZeroBounce: 100 free validations trial
+- NeverBounce: 1,000 free validations trial
+- Proxycurl: Trial available with credit card
+
+### Post-Trial Costs (per 1000 contacts)
+- Hunter.io: ~$50/month
+- Email Validation: ~$10/month
+- Proxycurl: ~$100/month (optional)
+- **Total: ~$60-160/month for sustained usage**
+
+---
+
+## Risk Mitigation
+
+### Technical Risks
+1. **Website structure changes**
+   - Mitigation: Adaptive scraping, fallback strategies, manual URL input option
+
+2. **API rate limits**
+   - Mitigation: Built-in rate limiting, caching, batch processing
+
+3. **Anti-scraping measures**
+   - Mitigation: Respect robots.txt, random delays, rotating user agents
+
+### Data Quality Risks
+1. **Outdated contact info**
+   - Mitigation: LinkedIn verification, email validation, recency indicators
+
+2. **False positives in title matching**
+   - Mitigation: Confidence scoring, manual review flags, multiple matching algorithms
+
+3. **Email pattern failures**
+   - Mitigation: Only construct if 3+ examples, validate all constructed emails
+
+---
+
+## Next Steps
+
+**Current Status**: All design decisions finalized - Ready to begin implementation
+
+**Immediate Next Task**: Set up project directory structure and create requirements.txt
+
+**Decisions Finalized** ✓:
+- ✓ Python version: 3.10+
+- ✓ Scraping library: Scrapy + Playwright
+- ✓ Storage: CSV/Excel only
+- ✓ APIs: All three, optional (Hunter.io, ZeroBounce/NeverBounce, Proxycurl)
+- ✓ Rate limiting: Adaptive
+- ✓ JavaScript: Always use headless browser
+- ✓ Logging: Standard (key events)
+- ✓ Database comparison: Optional feature
+- ✓ Excel output: 8-sheet comprehensive format
+- ✓ Statistics: All four metrics
+- ✓ Caching: Institution lists only
+
+**Ready to Build**:
+1. Create project directory structure (`/modules/`, `/config/`, `/output/`, `/logs/`, `/tests/`)
+2. Create requirements.txt with finalized dependencies
+3. Set up config system (.env file with API key placeholders)
+4. Begin building Target Discovery module
+
+---
+
+## Notes & References
+
+- Full technical design: See `project_design.md`
+- Git repository initialized: Yes
+- Current branch: main
+- Last commit: "created: README.md and project_design.md"
+
+---
+
+## Progress Tracking
+
+Use this section to track completion:
+
+**Sprint 1 Progress**: 2/8 tasks complete
+- [x] Create CLAUDE.md
+- [x] Finalize all design decisions
+- [ ] Project structure
+- [ ] Requirements.txt
+- [ ] Config system
+- [ ] Target discovery (ABA)
+- [ ] Target discovery (Paralegal)
+- [ ] Utilities
+
+**Overall Progress**: Phase 1 (Foundation) - Design Complete, Implementation Starting
