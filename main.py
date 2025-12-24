@@ -17,6 +17,9 @@ from modules.utils import setup_logger, save_dataframe
 from modules.target_discovery import get_all_targets
 from modules.contact_extractor import scrape_multiple_institutions
 from modules.email_validator import enrich_contact_data
+from modules.deduplication import deduplicate_contacts, load_existing_database, compare_with_existing
+from modules.statistics import calculate_contact_statistics
+from modules.excel_output import create_excel_workbook
 
 
 # US State Abbreviations
@@ -148,6 +151,40 @@ def get_max_institutions() -> Optional[int]:
         return None
 
 
+def get_existing_database_path() -> Optional[str]:
+    """
+    Get path to existing contacts database for comparison (optional).
+
+    Returns:
+        Path to existing database file or None
+    """
+    print("\nDo you have an existing contacts database to compare against?")
+    print("  - Enter path to CSV or Excel file")
+    print("  - Press Enter to skip (no comparison)")
+    print()
+
+    user_input = input("Database path: ").strip()
+
+    if not user_input:
+        return None
+
+    # Expand ~ to home directory
+    from pathlib import Path
+    path = Path(user_input).expanduser()
+
+    if not path.exists():
+        logger.warning(f"File not found: {path}")
+        logger.warning("Skipping database comparison...")
+        return None
+
+    if path.suffix.lower() not in ['.csv', '.xlsx', '.xls']:
+        logger.warning(f"Unsupported file format: {path.suffix}")
+        logger.warning("Only .csv and .xlsx files are supported")
+        return None
+
+    return str(path)
+
+
 def main():
     """Main entry point for the scraper."""
     # Setup logging
@@ -167,8 +204,10 @@ def main():
     mode = get_user_input_mode()
 
     max_institutions = None
+    existing_db_path = None
     if mode == 'full':
         max_institutions = get_max_institutions()
+        existing_db_path = get_existing_database_path()
 
     # Confirm settings
     print("\n" + "=" * 70)
@@ -179,6 +218,7 @@ def main():
     print(f"Program Type: {program_type.upper()}")
     if mode == 'full':
         print(f"Institution Limit: {max_institutions if max_institutions else 'ALL'}")
+        print(f"Existing Database: {existing_db_path if existing_db_path else 'None (no comparison)'}")
     print("=" * 70)
     print()
 
@@ -256,6 +296,66 @@ def main():
 
             # Enrich contact data with email validation
             contacts = enrich_contact_data(contacts)
+
+        # Phase 4: Deduplication, Statistics & Excel Output (if contacts found)
+        if not contacts.empty:
+            print("\n" + "=" * 70)
+            print("PHASE 4: DEDUPLICATION & QUALITY CONTROL")
+            print("=" * 70)
+            print()
+
+            # Step 1: Internal deduplication
+            logger.info("Deduplicating contacts...")
+            initial_count = len(contacts)
+            contacts = deduplicate_contacts(contacts)
+            duplicates_removed = initial_count - len(contacts)
+            logger.success(f"Deduplication complete: {duplicates_removed} duplicates removed, {len(contacts)} unique contacts")
+
+            # Step 2: Compare with existing database (if provided)
+            new_contacts_df = contacts.copy()
+            duplicates_df = None
+            updates_df = None
+
+            if existing_db_path:
+                logger.info(f"Loading existing database from: {existing_db_path}")
+                existing_db = load_existing_database(existing_db_path)
+
+                if existing_db is not None:
+                    logger.info("Comparing with existing database...")
+                    new_contacts_df, duplicates_df, updates_df = compare_with_existing(contacts, existing_db)
+
+                    logger.success(f"Comparison complete: {len(new_contacts_df)} new, {len(duplicates_df)} duplicates, {len(updates_df)} updates")
+
+                    # Save classification results
+                    if not new_contacts_df.empty:
+                        new_file = save_dataframe(new_contacts_df, 'contacts_new.csv', output_dir=OUTPUT_DIR, add_timestamp=True)
+                        logger.success(f"New contacts saved to: {new_file}")
+
+                    if not duplicates_df.empty:
+                        dup_file = save_dataframe(duplicates_df, 'contacts_duplicates.csv', output_dir=OUTPUT_DIR, add_timestamp=True)
+                        logger.success(f"Duplicates saved to: {dup_file}")
+
+                    if not updates_df.empty:
+                        upd_file = save_dataframe(updates_df, 'contacts_updates.csv', output_dir=OUTPUT_DIR, add_timestamp=True)
+                        logger.success(f"Updates saved to: {upd_file}")
+
+            # Step 3: Calculate statistics
+            logger.info("Calculating statistics...")
+            stats = calculate_contact_statistics(contacts, targets)
+            logger.success("Statistics calculation complete")
+
+            # Step 4: Generate Excel workbook
+            logger.info("Generating Excel workbook...")
+            from modules.utils import get_timestamp
+            excel_filename = f"contacts_final_{get_timestamp()}.xlsx"
+            excel_path = OUTPUT_DIR / excel_filename
+
+            success = create_excel_workbook(contacts, stats, str(excel_path), targets)
+
+            if success:
+                logger.success(f"Excel workbook created: {excel_path}")
+            else:
+                logger.error("Failed to create Excel workbook")
 
         # Display contact extraction results
         print("\n" + "=" * 70)
@@ -338,12 +438,25 @@ def main():
         print("=" * 70)
         print(f"Targets saved to: {targets_file}")
         if not contacts.empty:
-            print(f"Contacts saved to: {contacts_file}")
+            print(f"Contacts (CSV) saved to: {contacts_file}")
+            if 'excel_path' in locals() and success:
+                print(f"Contacts (Excel) saved to: {excel_path}")
+
+            if existing_db_path:
+                print()
+                print("Database Comparison Results:")
+                print(f"  New contacts: {len(new_contacts_df)}")
+                if duplicates_df is not None:
+                    print(f"  Duplicates: {len(duplicates_df)}")
+                if updates_df is not None:
+                    print(f"  Updates: {len(updates_df)}")
         print()
         print("Next Steps:")
-        print("  - Review extracted contacts")
-        if not contacts.empty:
-            print("  - Proceed to Phase 3: Email Validation & Enrichment")
+        print("  - Review the Excel workbook with all sheets")
+        print("  - Check Statistics Summary sheet for detailed metrics")
+        print("  - Review Scraping Log for success/failure breakdown")
+        if not contacts.empty and len(contacts[contacts['confidence_score'] < 50]) > 0:
+            print("  - Review 'Needs Review' sheet for low-confidence contacts")
         print("=" * 70)
 
     except KeyboardInterrupt:
