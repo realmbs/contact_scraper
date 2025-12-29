@@ -37,6 +37,7 @@ from config.settings import (
 from config.api_clients import (
     validate_email_with_hunter,
     find_email_with_hunter,
+    get_hunter_client,
 )
 from modules.utils import rate_limit, extract_domain
 
@@ -62,6 +63,9 @@ MEDIUM_EMAIL_SCORE = 50
 
 # Initialize logger
 logger = logger.bind(module="email_validator")
+
+# Initialize Hunter.io client (None if API key not configured)
+HUNTER_CLIENT = get_hunter_client()
 
 # ============================================================================
 # Helper Functions - Email Validation Status Mapping
@@ -330,7 +334,7 @@ def validate_email_auto(email: str) -> Optional[Dict]:
         return result
 
     # Fall back to Hunter.io
-    result = validate_email_with_hunter(email)
+    result = validate_email_with_hunter(email, HUNTER_CLIENT)
     if result:
         return result
 
@@ -513,7 +517,7 @@ def find_missing_emails(contact_df: pd.DataFrame) -> pd.DataFrame:
             continue
 
         # Try Hunter.io first
-        email = find_email_with_hunter(first_name, last_name, domain)
+        email = find_email_with_hunter(first_name, last_name, domain, HUNTER_CLIENT)
 
         if email:
             contact_df.at[idx, 'email'] = email

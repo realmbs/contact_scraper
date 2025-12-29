@@ -126,35 +126,169 @@ CACHE_EXPIRATION_HOURS = _get_int('CACHE_EXPIRATION_HOURS', 24)
 # =============================================================================
 
 LAW_SCHOOL_ROLES = [
+    # Library Directors
     'Library Director',
     'Law Library Director',
     'Director of the Law Library',
+    'Director of Law Library',
+    'Associate Law Librarian',
+    'Associate Law Library Director',
+    'Head Librarian',
+    'Law Librarian',
+    'Head of Reference',
+    'Reference Librarian',
+    'Instructional Technology Librarian',
+    'Technology Librarian',
+
+    # Academic Affairs Deans (variations with comma and "for/of")
     'Associate Dean for Academic Affairs',
+    'Associate Dean of Academic Affairs',
+    'Associate Dean, Academic Affairs',
+    'Assistant Dean for Academic Affairs',
+    'Assistant Dean of Academic Affairs',
+    'Assistant Dean, Academic Affairs',
+    'Dean of Academic Affairs',
+    'Dean of Students',
+    'Associate Dean of Students',
+    'Associate Dean for Students',
+
+    # Information Services
     'Associate Dean for Information Services',
+    'Associate Dean of Information Services',
+    'Assistant Dean for Information Services',
+    'Assistant Dean of Information Services',
+    'Director of Information Services',
+    'IT Director',
+    'Information Services Director',
+
+    # Legal Writing
     'Legal Writing Director',
     'Director of Legal Writing',
+    'Director, Legal Writing',
+    'Legal Writing Program Director',
+    'Associate Director of Legal Writing',
+
+    # Experiential Learning
     'Experiential Learning Director',
     'Director of Experiential Learning',
+    'Director, Experiential Learning',
+    'Experiential Programs Director',
+    'Associate Director of Experiential Learning',
+    'Associate Director, Experiential Learning',
+
+    # Clinical Programs
     'Clinical Programs Director',
-    'Instructional Technology Librarian',
-    'Head of Reference',
-    'Assistant Dean for Information Services',
+    'Director of Clinical Programs',
+    'Director, Clinical Programs',
+    'Clinical Director',
+    'Associate Clinical Director',
+    'Clinical Faculty Director',
 ]
 
 PARALEGAL_PROGRAM_ROLES = [
+    # Program Directors
     'Paralegal Program Director',
     'Director of Paralegal Studies',
+    'Director, Paralegal Studies',
+    'Director of Paralegal Program',
+    'Paralegal Studies Program Director',
+    'Legal Studies Program Director',
+    'Director of Legal Studies',
+    'Director, Legal Studies',
+
+    # Coordinators
     'Paralegal Studies Coordinator',
+    'Paralegal Program Coordinator',
+    'Legal Studies Coordinator',
+    'Program Coordinator',
+    'Paralegal Coordinator',
+
+    # Department Leadership
+    'Department Chair',
+    'Program Chair',
+    'Chair, Legal Studies',
+    'Legal Studies Department Chair',
+    'Paralegal Studies Department Chair',
+    'Department Head',
+
+    # Deans
     'Dean of Workforce Programs',
     'Dean of Career and Technical Education',
+    'Dean of Career Education',
+    'CTE Dean',
+    'Workforce Development Dean',
+    'Dean, Workforce Programs',
+    'Dean, Career and Technical Education',
+
+    # Faculty
     'Legal Studies Faculty',
     'Legal Studies Instructor',
-    'Program Chair',
-    'Department Chair',
+    'Paralegal Studies Faculty',
+    'Paralegal Instructor',
+    'Legal Studies Professor',
+    'Paralegal Studies Professor',
+    'Legal Studies Lecturer',
 ]
 
-# Combined list for "both" option
-ALL_TARGET_ROLES = LAW_SCHOOL_ROLES + PARALEGAL_PROGRAM_ROLES
+# =============================================================================
+# Role Variant Generation (Interim, Acting, Co-Director, etc.)
+# =============================================================================
+
+def _generate_role_variants(base_roles: list) -> list:
+    """
+    Generate title variants for interim, acting, co-director roles.
+
+    This dramatically expands coverage without manual typing.
+    For each base role, generates:
+    - Interim [Role]
+    - Acting [Role]
+    - Co-Director/Co-Chair variants (where applicable)
+
+    Args:
+        base_roles: List of base role titles
+
+    Returns:
+        List including base roles + generated variants
+    """
+    variants = list(base_roles)  # Start with originals
+
+    # Modifiers to apply
+    interim_modifiers = ['Interim', 'Acting']
+    co_modifiers = ['Co-Director', 'Co-Chair', 'Co-Coordinator']
+
+    for role in base_roles:
+        # Add interim/acting variants for all roles
+        for modifier in interim_modifiers:
+            variant = f"{modifier} {role}"
+            if variant not in variants:
+                variants.append(variant)
+
+        # Add co-director variants only for Director/Chair/Coordinator roles
+        if any(keyword in role for keyword in ['Director', 'Chair', 'Coordinator']):
+            for co_mod in co_modifiers:
+                # Replace Director with Co-Director, etc.
+                if 'Director' in role:
+                    variant = role.replace('Director', co_mod)
+                    if variant not in variants:
+                        variants.append(variant)
+                elif 'Chair' in role:
+                    variant = role.replace('Chair', 'Co-Chair')
+                    if variant not in variants:
+                        variants.append(variant)
+                elif 'Coordinator' in role:
+                    variant = role.replace('Coordinator', 'Co-Coordinator')
+                    if variant not in variants:
+                        variants.append(variant)
+
+    return variants
+
+
+# Generate expanded role lists with variants
+LAW_SCHOOL_ROLES_EXPANDED = _generate_role_variants(LAW_SCHOOL_ROLES)
+PARALEGAL_PROGRAM_ROLES_EXPANDED = _generate_role_variants(PARALEGAL_PROGRAM_ROLES)
+
+# Combined list for "both" option (using expanded versions)
+ALL_TARGET_ROLES = LAW_SCHOOL_ROLES_EXPANDED + PARALEGAL_PROGRAM_ROLES_EXPANDED
 
 # =============================================================================
 # Validation & Reporting

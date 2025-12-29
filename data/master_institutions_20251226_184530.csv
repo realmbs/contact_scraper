@@ -1,0 +1,397 @@
+institution_id,name,type,state,city,url,accreditation_status,source,last_updated
+1,Akron,Law School,,,http://www.uakron.edu/law,ABA Approved (1961),ABA,2025-12-26 18:45:30
+2,Alabama,Law School,,,http://www.law.ua.edu,ABA Approved (1926),ABA,2025-12-26 18:45:30
+3,Albany,Law School,,,http://www.albanylaw.edu,ABA Approved (1930),ABA,2025-12-26 18:45:30
+4,American,Law School,,,http://www.wcl.american.edu,ABA Approved (1940),ABA,2025-12-26 18:45:30
+5,Appalachian,Law School,,,http://www.asl.edu,ABA Approved (2001),ABA,2025-12-26 18:45:30
+6,Arizona,Law School,,,http://www.law.arizona.edu,ABA Approved (1930),ABA,2025-12-26 18:45:30
+7,Arizona State,Law School,,,https://law.asu.edu,ABA Approved (1969),ABA,2025-12-26 18:45:30
+8,Arkansas - Fayetteville,Law School,Arkansas,Fayetteville,http://law.uark.edu,ABA Approved (1926),ABA,2025-12-26 18:45:30
+9,Arkansas - Little Rock,Law School,Arkansas,Little Rock,https://ualr.edu/law,ABA Approved (1969),ABA,2025-12-26 18:45:30
+10,Atlanta's John Marshall Law School,Law School,,,http://www.johnmarshall.edu,ABA Approved (2005),ABA,2025-12-26 18:45:30
+11,Ave Maria School of Law,Law School,,,http://www.avemarialaw.edu,ABA Approved (2002),ABA,2025-12-26 18:45:30
+12,Baltimore,Law School,,,http://law.ubalt.edu/index.cfm,ABA Approved (1972),ABA,2025-12-26 18:45:30
+13,Barry University,Law School,,,http://www.barry.edu/law,ABA Approved (2002),ABA,2025-12-26 18:45:30
+14,Baylor,Law School,,,http://www.baylor.edu/law,ABA Approved (1931),ABA,2025-12-26 18:45:30
+15,Belmont University,Law School,,,http://www.belmont.edu/law,ABA Approved (2013),ABA,2025-12-26 18:45:30
+16,Boston College,Law School,,,http://www.bc.edu/schools/law,ABA Approved (1932),ABA,2025-12-26 18:45:30
+17,Boston University,Law School,,,https://www.bu.edu/law,ABA Approved (1925),ABA,2025-12-26 18:45:30
+18,Brigham Young,Law School,,,http://www.law.byu.edu,ABA Approved (1974),ABA,2025-12-26 18:45:30
+19,Brooklyn,Law School,,,http://www.brooklaw.edu,ABA Approved (1937),ABA,2025-12-26 18:45:30
+20,Buffalo,Law School,,,http://www.law.buffalo.edu,ABA Approved (1936),ABA,2025-12-26 18:45:30
+21,California - Berkeley,Law School,California,Berkeley,http://www.law.berkeley.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+22,California - Davis,Law School,California,Davis,http://www.law.ucdavis.edu,ABA Approved (1968),ABA,2025-12-26 18:45:30
+23,California - Irvine,Law School,California,Irvine,http://www.law.uci.edu,ABA Approved (2011),ABA,2025-12-26 18:45:30
+24,California - Los Angeles,Law School,California,Los Angeles,http://www.law.ucla.edu,ABA Approved (1950),ABA,2025-12-26 18:45:30
+25,California - San Francisco,Law School,California,San Francisco,http://www.uchastings.edu,ABA Approved (1939),ABA,2025-12-26 18:45:30
+26,California Western,Law School,,,http://www.cwsl.edu,ABA Approved (1962),ABA,2025-12-26 18:45:30
+27,Campbell,Law School,,,http://law.campbell.edu,ABA Approved (1979),ABA,2025-12-26 18:45:30
+28,Capital,Law School,,,http://www.law.capital.edu,ABA Approved (1950),ABA,2025-12-26 18:45:30
+29,Case Western Reserve,Law School,,,http://law.case.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+30,Catholic University of America,Law School,,,http://law.edu,ABA Approved (1925),ABA,2025-12-26 18:45:30
+31,Chapman,Law School,,,http://www.chapman.edu/law,ABA Approved (1998),ABA,2025-12-26 18:45:30
+32,Charleston,Law School,,,http://www.charlestonlaw.edu,ABA Approved (2006),ABA,2025-12-26 18:45:30
+33,Chicago,Law School,,,http://www.law.uchicago.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+34,Chicago-Kent,Law School,Chicago,Kent,http://www.kentlaw.edu,ABA Approved (1936),ABA,2025-12-26 18:45:30
+35,Cincinnati,Law School,,,http://www.law.uc.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+36,City University of New York,Law School,,,http://www.law.cuny.edu,ABA Approved (1985),ABA,2025-12-26 18:45:30
+37,Cleveland State,Law School,,,http://www.law.csuohio.edu,ABA Approved (1957),ABA,2025-12-26 18:45:30
+38,Colorado,Law School,,,http://www.colorado.edu/law,ABA Approved (1923),ABA,2025-12-26 18:45:30
+39,Columbia,Law School,,,https://www.law.columbia.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+40,Connecticut,Law School,,,http://www.law.uconn.edu,ABA Approved (1933),ABA,2025-12-26 18:45:30
+41,Cooley Law School,Law School,,,https://www.cooley.edu,ABA Approved (1975),ABA,2025-12-26 18:45:30
+42,Cornell,Law School,,,http://www.lawschool.cornell.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+43,Creighton,Law School,,,http://law.creighton.edu,ABA Approved (1924),ABA,2025-12-26 18:45:30
+44,Dayton,Law School,,,http://law.udayton.edu,ABA Approved (1975),ABA,2025-12-26 18:45:30
+45,Denver,Law School,,,http://www.law.du.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+46,Depaul,Law School,,,https://law.depaul.edu/pages/default.aspx,ABA Approved (1925),ABA,2025-12-26 18:45:30
+47,Detroit Mercy,Law School,,,https://law.udmercy.edu,ABA Approved (1933),ABA,2025-12-26 18:45:30
+48,District of Columbia,Law School,,,https://law.udc.edu,ABA Approved (1991),ABA,2025-12-26 18:45:30
+49,Drake,Law School,,,http://www.law.drake.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+50,Drexel,Law School,,,http://www.drexel.edu/law,ABA Approved (2008),ABA,2025-12-26 18:45:30
+51,Duke,Law School,,,http://www.law.duke.edu,ABA Approved (1931),ABA,2025-12-26 18:45:30
+52,Duquesne,Law School,,,https://www.duq.edu/academics/schools/law,ABA Approved (1960),ABA,2025-12-26 18:45:30
+53,Elon,Law School,,,http://www.elon.edu/e-web/law,ABA Approved (2008),ABA,2025-12-26 18:45:30
+54,Emory,Law School,,,http://www.law.emory.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+55,Faulkner,Law School,,,https://law.faulkner.edu,ABA Approved (2006),ABA,2025-12-26 18:45:30
+56,Florida,Law School,,,http://www.law.ufl.edu,ABA Approved (1925),ABA,2025-12-26 18:45:30
+57,Florida A&M,Law School,,,http://law.famu.edu,ABA Approved (2004),ABA,2025-12-26 18:45:30
+58,Florida International,Law School,,,http://law.fiu.edu,ABA Approved (2004),ABA,2025-12-26 18:45:30
+59,Florida State,Law School,,,http://www.law.fsu.edu,ABA Approved (1968),ABA,2025-12-26 18:45:30
+60,Fordham,Law School,,,http://law.fordham.edu,ABA Approved (1936),ABA,2025-12-26 18:45:30
+61,George Mason,Law School,,,http://www.law.gmu.edu,ABA Approved (1980),ABA,2025-12-26 18:45:30
+62,George Washington,Law School,,,http://www.law.gwu.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+63,Georgetown,Law School,,,http://www.law.georgetown.edu,ABA Approved (1924),ABA,2025-12-26 18:45:30
+64,Georgia,Law School,,,http://www.law.uga.edu,ABA Approved (1930),ABA,2025-12-26 18:45:30
+65,Georgia State,Law School,,,http://law.gsu.edu,ABA Approved (1984),ABA,2025-12-26 18:45:30
+66,Golden Gate,Law School,,,http://www.ggu.edu/law,ABA Approved (1956),ABA,2025-12-26 18:45:30
+67,Gonzaga,Law School,,,http://www.law.gonzaga.edu,ABA Approved (1951),ABA,2025-12-26 18:45:30
+68,Harvard,Law School,,,http://www.law.harvard.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+69,Hawaii,Law School,,,https://www.law.hawaii.edu,ABA Approved (1974),ABA,2025-12-26 18:45:30
+70,Hofstra,Law School,,,https://law.hofstra.edu,ABA Approved (1971),ABA,2025-12-26 18:45:30
+71,Houston,Law School,,,http://www.law.uh.edu,ABA Approved (1950),ABA,2025-12-26 18:45:30
+72,Howard,Law School,,,http://law.howard.edu,ABA Approved (1931),ABA,2025-12-26 18:45:30
+73,Idaho,Law School,,,https://www.uidaho.edu/law,ABA Approved (1925),ABA,2025-12-26 18:45:30
+74,Illinois,Law School,,,https://law.illinois.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+75,Illinois Chicago,Law School,,,https://law.uic.edu,ABA Approved (1951),ABA,2025-12-26 18:45:30
+76,Indiana University - Bloomington,Law School,Indiana University,Bloomington,https://law.indiana.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+77,Indiana University - Indianapolis,Law School,Indiana University,Indianapolis,https://mckinneylaw.iu.edu,ABA Approved (1944),ABA,2025-12-26 18:45:30
+78,Inter American,Law School,,,https://derecho.inter.edu,ABA Approved (1969),ABA,2025-12-26 18:45:30
+79,Iowa,Law School,,,https://law.uiowa.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+80,Jacksonville,Law School,,,https://www.ju.edu/law/index.php,ABA Approved (2024),ABA,2025-12-26 18:45:30
+81,Judge Advocate General's School,Law School,,,,ABA Approved (1958),ABA,2025-12-26 18:45:30
+82,Kansas,Law School,,,http://www.law.ku.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+83,Kentucky,Law School,,,http://www.uky.edu/law,ABA Approved (1925),ABA,2025-12-26 18:45:30
+84,Lewis and Clark,Law School,,,http://law.lclark.edu,ABA Approved (1970),ABA,2025-12-26 18:45:30
+85,Liberty,Law School,,,http://law.liberty.edu,ABA Approved (2006),ABA,2025-12-26 18:45:30
+86,Lincoln Memorial,Law School,,,http://law.lmunet.edu,ABA Approved (2014),ABA,2025-12-26 18:45:30
+87,Louisiana State,Law School,,,http://www.law.lsu.edu,ABA Approved (1926),ABA,2025-12-26 18:45:30
+88,Louisville,Law School,,,http://www.law.louisville.edu,ABA Approved (1931),ABA,2025-12-26 18:45:30
+89,Loyola - Chicago,Law School,Loyola,Chicago,http://www.luc.edu/law,ABA Approved (1925),ABA,2025-12-26 18:45:30
+90,Loyola - Los Angeles,Law School,Loyola,Los Angeles,http://www.lls.edu,ABA Approved (1935),ABA,2025-12-26 18:45:30
+91,Loyola - New Orleans,Law School,Loyola,New Orleans,http://www.loyno.edu/law,ABA Approved (1931),ABA,2025-12-26 18:45:30
+92,Maine,Law School,,,http://mainelaw.maine.edu,ABA Approved (1962),ABA,2025-12-26 18:45:30
+93,Marquette,Law School,,,http://mainelaw.maine.edu,ABA Approved (1925),ABA,2025-12-26 18:45:30
+94,Maryland,Law School,,,http://www.law.umaryland.edu,ABA Approved (1930),ABA,2025-12-26 18:45:30
+95,Massachusetts,Law School,,,http://www.umassd.edu/law,ABA Approved (2012),ABA,2025-12-26 18:45:30
+96,McGeorge,Law School,,,http://www.mcgeorge.edu,ABA Approved (1969),ABA,2025-12-26 18:45:30
+97,Memphis,Law School,,,http://www.memphis.edu/law,ABA Approved (1965),ABA,2025-12-26 18:45:30
+98,Mercer,Law School,,,https://law.mercer.edu,ABA Approved (1925),ABA,2025-12-26 18:45:30
+99,Miami,Law School,,,http://www.law.miami.edu,ABA Approved (1941),ABA,2025-12-26 18:45:30
+100,Michigan,Law School,,,http://www.law.umich.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+101,Michigan State,Law School,,,http://www.law.msu.edu,ABA Approved (1941),ABA,2025-12-26 18:45:30
+102,Minnesota,Law School,,,http://www.law.umn.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+103,Mississippi,Law School,,,http://www.law.olemiss.edu,ABA Approved (1930),ABA,2025-12-26 18:45:30
+104,Mississippi College,Law School,,,http://law.mc.edu,ABA Approved (1980),ABA,2025-12-26 18:45:30
+105,Missouri,Law School,,,http://www.law.missouri.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+106,Missouri - Kansas City,Law School,Missouri,Kansas City,https://law.umkc.edu,ABA Approved (1936),ABA,2025-12-26 18:45:30
+107,Mitchell Hamline,Law School,,,http://mitchellhamline.edu,ABA Approved (2015),ABA,2025-12-26 18:45:30
+108,Montana,Law School,,,http://www.umt.edu/law,ABA Approved (1923),ABA,2025-12-26 18:45:30
+109,Nebraska,Law School,,,http://law.unl.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+110,Nevada,Law School,,,http://law.unlv.edu,ABA Approved (2000),ABA,2025-12-26 18:45:30
+111,New England Law | Boston,Law School,,,http://www.nesl.edu,ABA Approved (1969),ABA,2025-12-26 18:45:30
+112,New Hampshire,Law School,,,http://law.unh.edu,ABA Approved (1974),ABA,2025-12-26 18:45:30
+113,New Mexico,Law School,,,http://lawschool.unm.edu,ABA Approved (1948),ABA,2025-12-26 18:45:30
+114,New York Law School,Law School,,,http://www.nyls.edu,ABA Approved (1954),ABA,2025-12-26 18:45:30
+115,New York University,Law School,,,http://www.law.nyu.edu,ABA Approved (1930),ABA,2025-12-26 18:45:30
+116,North Carolina,Law School,,,https://law.unc.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+117,North Carolina Central,Law School,,,http://law.nccu.edu,ABA Approved (1950),ABA,2025-12-26 18:45:30
+118,North Dakota,Law School,,,http://www.law.und.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+119,Northeastern,Law School,,,http://www.northeastern.edu/law,ABA Approved (1969),ABA,2025-12-26 18:45:30
+120,Northern Illinois,Law School,,,http://law.niu.edu,ABA Approved (1978),ABA,2025-12-26 18:45:30
+121,Northern Kentucky,Law School,,,http://www.nku.edu/~chase,ABA Approved (1954),ABA,2025-12-26 18:45:30
+122,Northwestern,Law School,,,http://www.law.northwestern.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+123,Notre Dame,Law School,,,https://law.nd.edu,ABA Approved (1925),ABA,2025-12-26 18:45:30
+124,Nova Southeastern,Law School,,,https://www.law.nova.edu,ABA Approved (1975),ABA,2025-12-26 18:45:30
+125,Ohio Northern,Law School,,,https://law.onu.edu,ABA Approved (1948),ABA,2025-12-26 18:45:30
+126,Oklahoma,Law School,,,http://www.law.ou.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+127,Oklahoma City,Law School,,,http://www.okcu.edu/law,ABA Approved (1960),ABA,2025-12-26 18:45:30
+128,Oregon,Law School,,,https://law.uoregon.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+129,Pace,Law School,,,http://www.law.pace.edu,ABA Approved (1978),ABA,2025-12-26 18:45:30
+130,Penn State-Dickinson Law,Law School,Penn State,Dickinson Law,https://dickinsonlaw.psu.edu,ABA Approved (1931),ABA,2025-12-26 18:45:30
+131,Pennsylvania,Law School,,,http://www.law.upenn.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+132,Pepperdine,Law School,,,http://law.pepperdine.edu,ABA Approved (1972),ABA,2025-12-26 18:45:30
+133,Pittsburgh,Law School,,,http://www.law.pitt.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+134,Pontifical Catholic of Puerto Rico,Law School,,,http://www.pucpr.edu,ABA Approved (1967),ABA,2025-12-26 18:45:30
+135,Puerto Rico,Law School,,,http://derecho.uprrp.edu,ABA Approved (1945),ABA,2025-12-26 18:45:30
+136,Quinnipiac,Law School,,,http://law.quinnipiac.edu,ABA Approved (1992),ABA,2025-12-26 18:45:30
+137,Regent,Law School,,,http://www.regent.edu/acad/schlaw,ABA Approved (1989),ABA,2025-12-26 18:45:30
+138,Richmond,Law School,,,http://law.richmond.edu,ABA Approved (1928),ABA,2025-12-26 18:45:30
+139,Roger Williams,Law School,,,http://law.rwu.edu,ABA Approved (1995),ABA,2025-12-26 18:45:30
+140,Rutgers,Law School,,,http://www.law.rutgers.edu,ABA Approved (1941),ABA,2025-12-26 18:45:30
+141,Saint Louis,Law School,,,http://law.slu.edu,ABA Approved (1924),ABA,2025-12-26 18:45:30
+142,Samford,Law School,,,http://cumberland.samford.edu,ABA Approved (1949),ABA,2025-12-26 18:45:30
+143,San Diego,Law School,,,http://www.sandiego.edu/law,ABA Approved (1961),ABA,2025-12-26 18:45:30
+144,San Francisco,Law School,,,http://www.usfca.edu/law,ABA Approved (1935),ABA,2025-12-26 18:45:30
+145,Santa Clara,Law School,,,http://www.scu.edu/law,ABA Approved (1937),ABA,2025-12-26 18:45:30
+146,Seattle,Law School,,,http://www.law.seattleu.edu,ABA Approved (1994),ABA,2025-12-26 18:45:30
+147,Seton Hall,Law School,,,http://law.shu.edu,ABA Approved (1951),ABA,2025-12-26 18:45:30
+148,South Carolina,Law School,,,http://www.law.sc.edu,ABA Approved (1925),ABA,2025-12-26 18:45:30
+149,South Dakota,Law School,,,http://www.usd.edu/law,ABA Approved (1923),ABA,2025-12-26 18:45:30
+150,South Texas-Houston,Law School,South Texas,Houston,http://www.stcl.edu,ABA Approved (1959),ABA,2025-12-26 18:45:30
+151,Southern California,Law School,,,http://gould.usc.edu,ABA Approved (1924),ABA,2025-12-26 18:45:30
+152,Southern Illinois,Law School,,,https://law.siu.edu,ABA Approved (1974),ABA,2025-12-26 18:45:30
+153,Southern Methodist,Law School,,,https://www.smu.edu/law,ABA Approved (1927),ABA,2025-12-26 18:45:30
+154,Southern University,Law School,,,http://www.sulc.edu,ABA Approved (1953),ABA,2025-12-26 18:45:30
+155,Southwestern,Law School,,,http://www.swlaw.edu,ABA Approved (1970),ABA,2025-12-26 18:45:30
+156,St. John's,Law School,,,http://www.stjohns.edu/law,ABA Approved (1937),ABA,2025-12-26 18:45:30
+157,St. Mary's,Law School,,,http://www.stmarytx.edu/law,ABA Approved (1948),ABA,2025-12-26 18:45:30
+158,St. Thomas (Florida),Law School,,,http://www.stu.edu,ABA Approved (1988),ABA,2025-12-26 18:45:30
+159,St. Thomas (Minnesota),Law School,,,http://www.stthomas.edu/law,ABA Approved (2003),ABA,2025-12-26 18:45:30
+160,Stanford,Law School,,,http://www.law.stanford.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+161,Stetson,Law School,,,https://www.stetson.edu/portal/law,ABA Approved (1930),ABA,2025-12-26 18:45:30
+162,Suffolk,Law School,,,https://www.suffolk.edu/law,ABA Approved (1953),ABA,2025-12-26 18:45:30
+163,Syracuse,Law School,,,https://law.syracuse.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+164,Temple,Law School,,,http://www.law.temple.edu,ABA Approved (1933),ABA,2025-12-26 18:45:30
+165,Tennessee,Law School,,,http://www.law.utk.edu,ABA Approved (1925),ABA,2025-12-26 18:45:30
+166,Texas,Law School,,,http://www.utexas.edu/law,ABA Approved (1923),ABA,2025-12-26 18:45:30
+167,Texas A&M,Law School,,,https://law.tamu.edu,ABA Approved (1994),ABA,2025-12-26 18:45:30
+168,Texas Southern,Law School,,,http://www.tsulaw.edu,ABA Approved (1949),ABA,2025-12-26 18:45:30
+169,Texas Tech,Law School,,,http://www.law.ttu.edu,ABA Approved (1969),ABA,2025-12-26 18:45:30
+170,The Ohio State,Law School,,,http://moritzlaw.osu.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+171,Toledo,Law School,,,https://www.utoledo.edu/law,ABA Approved (1939),ABA,2025-12-26 18:45:30
+172,Touro,Law School,,,http://www.tourolaw.edu,ABA Approved (1983),ABA,2025-12-26 18:45:30
+173,Tulane,Law School,,,http://www.law.tulane.edu,ABA Approved (1925),ABA,2025-12-26 18:45:30
+174,Tulsa,Law School,,,http://www.utulsa.edu/law,ABA Approved (1950),ABA,2025-12-26 18:45:30
+175,UNT Dallas,Law School,,,https://www.untdallas.edu/lawschool/index.php,ABA Approved (2017),ABA,2025-12-26 18:45:30
+176,Utah,Law School,,,http://www.law.utah.edu,ABA Approved (1927),ABA,2025-12-26 18:45:30
+177,Vanderbilt,Law School,,,http://www.vanderbilt.edu/law,ABA Approved (1925),ABA,2025-12-26 18:45:30
+178,Vermont,Law School,,,http://www.vermontlaw.edu,ABA Approved (1975),ABA,2025-12-26 18:45:30
+179,Villanova,Law School,,,http://www.law.villanova.edu,ABA Approved (1954),ABA,2025-12-26 18:45:30
+180,Virginia,Law School,,,http://www.law.virginia.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+181,Wake Forest,Law School,,,http://www.law.wfu.edu,ABA Approved (1936),ABA,2025-12-26 18:45:30
+182,Washburn,Law School,,,http://washburnlaw.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+183,Washington,Law School,,,http://www.law.washington.edu,ABA Approved (1924),ABA,2025-12-26 18:45:30
+184,Washington University,Law School,,,http://law.wustl.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+185,Washington and Lee,Law School,,,https://law.wlu.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+186,Wayne State,Law School,,,http://www.law.wayne.edu,ABA Approved (1937),ABA,2025-12-26 18:45:30
+187,West Virginia,Law School,,,https://www.law.wvu.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+188,Western New England,Law School,,,https://www1.wne.edu/law,ABA Approved (1974),ABA,2025-12-26 18:45:30
+189,Widener-Commonwealth,Law School,Widener,Commonwealth,https://commonwealthlaw.widener.edu,ABA Approved (1988),ABA,2025-12-26 18:45:30
+190,Widener-Delaware,Law School,Widener,Delaware,http://delawarelaw.widener.edu,ABA Approved (1975),ABA,2025-12-26 18:45:30
+191,Willamette,Law School,,,http://willamette.edu/law/index.html,ABA Approved (1938),ABA,2025-12-26 18:45:30
+192,William and Mary,Law School,,,http://law.wm.edu,ABA Approved (1932),ABA,2025-12-26 18:45:30
+193,Wilmington +,Law School,,,https://law.wilmu.edu,ABA Approved (2025),ABA,2025-12-26 18:45:30
+194,Wisconsin,Law School,,,http://www.law.wisc.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+195,Wyoming,Law School,,,http://www.uwyo.edu/law,ABA Approved (1923),ABA,2025-12-26 18:45:30
+196,Yale,Law School,,,http://www.law.yale.edu,ABA Approved (1923),ABA,2025-12-26 18:45:30
+197,Yeshiva,Law School,,,http://www.cardozo.yu.edu,ABA Approved (1978),ABA,2025-12-26 18:45:30
+198,American National University Paralegal A.A.,Paralegal Program,Virginia,,https://an.edu/programs/associates/paralegal-associates/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+199,American River College,Paralegal Program,California,,https://arc.losrios.edu/academics/programs-majors/legal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+200,Anne Arundel Community College Paralegal,Paralegal Program,Maryland,,https://www.aacc.edu/programs-and-courses/credit-and-degree-seekers/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+201,Arapahoe Community College,Paralegal Program,Colorado,,https://www.arapahoe.edu/programs/academic-programs/legal-studies-paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+202,Athens Technical College Paralegal Studies,Paralegal Program,Georgia,,https://www.athenstech.edu/programs/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+203,Atlanta Technical College AAS Paralegal Studies,Paralegal Program,Georgia,,https://atlantatech.smartcatalogiq.com/en/2025-2026/college-catalog/programs-of-study/paralegal-studies/paralegal-studies-aas/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+204,Auburn University at Montgomery,Paralegal Program,Alabama,,https://www.aum.edu/degree/legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+205,Ball State University Legal Studies,Paralegal Program,Indiana,,https://www.bsu.edu/academics/collegesanddepartments/political-science/academic-programs/bachelors/legal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+206,Bergen Community College Legal Studies,Paralegal Program,New Jersey,,https://bergen.edu/legalstudies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+207,Berkeley College Paralegal Certificate,Paralegal Program,New Jersey,,https://ce.berkeleycollege.edu/public/category/courseCategoryCertificateProfile.do?certificateId=1019535,AAfPE Member,AAfPE,2025-12-26 18:45:30
+208,Bristol Community College Paralegal & Legal Studies,Paralegal Program,Massachusetts,,https://bristolcc.edu/learnatbristol/degreescertificatesandclasses/lawandjustice/paralegallegalstudies/index.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+209,Bronx Community College Paralegal Studies,Paralegal Program,New York,,https://www.bcc.cuny.edu/academics/academic-departments/business-and-information-systems-department/degree-certificate-programs-courses/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+210,Brookdale Community College Paralegal Studies,Paralegal Program,New Jersey,,https://www.brookdalecc.edu/academic-institutes-and-departments/business-social-sciences/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+211,Broward College Paralegal Studies,Paralegal Program,Florida,,https://www.broward.edu/academics/business/paralegal-studies.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+212,Bryan University,Paralegal Program,Texas,,https://www.bryanuniversity.edu,AAfPE Member,AAfPE,2025-12-26 18:45:30
+213,Bucks County Community College Paralegal Certificate,Paralegal Program,Pennsylvania,,https://www.bucks.edu/catalog/majors/business/paralegal-cert/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+214,Bunker Hill Community College Legal Studies,Paralegal Program,Massachusetts,,https://www.bhcc.edu/legalstudies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+215,CCBC Paralegal Studies Certificate,Paralegal Program,Maryland,,https://www.ccbcmd.edu/Programs-and-Courses-Finder/Program/paralegal-studies-certificate.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+216,CSU East Bay Extension,Paralegal Program,California,,https://ce.csueastbay.edu/programs/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+217,CT State Manchester Paralegal Studies,Paralegal Program,Connecticut,,https://manchester.ct.edu/academics/programs/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+218,Calhoun Community College,Paralegal Program,Alabama,,https://www.calhoun.edu/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+219,Carteret Community College Paralegal Technology,Paralegal Program,New Jersey,,https://carteret.edu/programs/paralegal-technology/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+220,Casper College Paralegal Studies,Paralegal Program,Wyoming,,https://www.caspercollege.edu/program/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+221,Center for Advanced Legal Studies,Paralegal Program,Texas,,https://paralegal.edu/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+222,Central Georgia Technical College Paralegal Studies,Paralegal Program,Georgia,,https://www.centralgatech.edu/programs-of-study/public-safety-professional-services/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+223,Central New Mexico Community College Paralegal Studies,Paralegal Program,New Mexico,,https://www.cnm.edu/programs/programs-a-z/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+224,Central Piedmont Community College Paralegal Technology,Paralegal Program,North Carolina,,https://www.cpcc.edu/programs/paralegal-technology,AAfPE Member,AAfPE,2025-12-26 18:45:30
+225,Chattahoochee Technical College Paralegal Studies,Paralegal Program,Georgia,,https://www.chattahoocheetech.edu/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+226,Chattanooga State Community College Paralegal AAS,Paralegal Program,Tennessee,,https://www.chattanoogastate.edu/paralegal-studies-aas,AAfPE Member,AAfPE,2025-12-26 18:45:30
+227,Chippewa Valley Technical College Paralegal,Paralegal Program,Wisconsin,,https://www.cvtc.edu/academics/programs/legal-studies-paralegal-post-baccalaureate,AAfPE Member,AAfPE,2025-12-26 18:45:30
+228,City Colleges of Chicago AAS Paralegal,Paralegal Program,Illinois,,https://catalog.ccc.edu/academic-program-requirements/paralegal-aas/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+229,Clarion University (see homepage),Paralegal Program,Pennsylvania,,https://www.clarion.edu,AAfPE Member,AAfPE,2025-12-26 18:45:30
+230,Clayton State University Paralegal Certificate,Paralegal Program,Georgia,,https://catalog.clayton.edu/academic-catalog/arts-sciences/social-sciences/paralegal-studies-certificate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+231,Coastline Community College,Paralegal Program,California,,https://www.coastline.edu/programs/paralegal-studies.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+232,College of DuPage Legal Studies,Paralegal Program,Illinois,,https://www.cod.edu/academics/programs/legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+233,College of Eastern Idaho Paralegal Studies,Paralegal Program,Idaho,,https://www.cei.edu/program/legal-studies-paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+234,College of Lake County Legal Studies,Paralegal Program,Illinois,,https://www.clcillinois.edu/programs/bssdv/legal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+235,College of Saint Mary Legal Studies,Paralegal Program,Nebraska,,https://www.csm.edu/academics/undergraduate-field-study/legal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+236,College of Southern Nevada Paralegal & Law,Paralegal Program,Nevada,,https://www.csn.edu/schools/school-of-business-hospitality-and-public-services/department-of-business-administration/paralegal-law-program,AAfPE Member,AAfPE,2025-12-26 18:45:30
+237,College of the Canyons,Paralegal Program,California,,https://www.canyons.edu/academics/paralegal/program/index.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+238,College of the Sequoias,Paralegal Program,California,,https://www.cos.edu/en-us/academics/business/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+239,Columbus State Community College Paralegal,Paralegal Program,Georgia,,https://www.cscc.edu/academics/departments/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+240,Community College of Aurora,Paralegal Program,Colorado,,https://www.ccaurora.edu/programs/public-service-department/paralegal-certificate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+241,Community College of Philadelphia Paralegal Studies AAS,Paralegal Program,Pennsylvania,,https://www.ccp.edu/college-catalog/degree-programs/associate-applied-science-aas/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+242,Cuyahoga Community College Paralegal,Paralegal Program,Ohio,,https://www.tri-c.edu/programs/paralegal/index.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+243,Dallas College Paralegal,Paralegal Program,Texas,,https://www.dallascollege.edu/cd/credit/paralegal/pages/default.aspx,AAfPE Member,AAfPE,2025-12-26 18:45:30
+244,Davenport University Paralegal,Paralegal Program,Michigan,,https://www.davenport.edu/academics/areas/business/legal-studies-as,AAfPE Member,AAfPE,2025-12-26 18:45:30
+245,Davidson-Davie Community College Paralegal Technology,Paralegal Program,North Carolina,,https://www.davidsondavie.edu/academics/law-public-safety/paralegal-technology/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+246,Daytona State College Paralegal Studies,Paralegal Program,Florida,,https://www.daytonastate.edu/academic-departments/college-of-business-engineering-and-technology/school-of-business-administration/paralegal-studies.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+247,Del Mar College Paralegal Studies,Paralegal Program,Texas,,https://delmar.edu/degrees/paralegal-studies/index.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+248,Delaware Technical Community College Paralegal Certificate,Paralegal Program,Delaware,,https://www.dtcc.edu/academics/programs-study/paralegal-certificate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+249,Duquesne University School of Law Paralegal Institute,Paralegal Program,Pennsylvania,,https://www.duq.edu/academics/colleges-and-schools/law/paralegal-institute/index.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+250,East Texas A&M University Paralegal Studies,Paralegal Program,Texas,,https://coursecatalog.tamuc.edu/.../paralegal-studies-major/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+251,Eastern Michigan University Paralegal,Paralegal Program,Michigan,,https://www.emich.edu/cet/tech-professional-mgmt/programs/paralegal/index.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+252,Edmonds Community College Legal Studies,Paralegal Program,Washington,,https://www.edcc.edu/legal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+253,Enterprise State Community College,Paralegal Program,Alabama,,https://www.escc.edu/academics/programs/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+254,FSW A.S. Paralegal,Paralegal Program,Florida,,https://www.fsw.edu/academics/programs/asparalegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+255,Fayetteville Technical Community College Paralegal Technology,Paralegal Program,North Carolina,,https://www.faytechcc.edu/academics/business-programs/paralegal-technology/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+256,Florence-Darlington Technical College Paralegal,Paralegal Program,South Carolina,,https://www.fdtc.edu/academics/programs/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+257,Florida State College at Jacksonville Paralegal Certificate,Paralegal Program,Florida,,https://www.fscj.edu/academics/programs/certs/4104,AAfPE Member,AAfPE,2025-12-26 18:45:30
+258,Frederick Community College Paralegal,Paralegal Program,Maryland,,https://www.frederick.edu/programs/public-safety/paralegal.aspx,AAfPE Member,AAfPE,2025-12-26 18:45:30
+259,Fremont University Legal Studies,Paralegal Program,Nebraska,,https://fremont.edu/programs/college-legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+260,Front Range Community College,Paralegal Program,Colorado,,https://www.frontrange.edu/programs-courses/program-list/paralegal.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+261,Fullerton College,Paralegal Program,California,,https://buscis.fullcoll.edu/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+262,Gadsden State Community College,Paralegal Program,Alabama,,https://www.gadsdenstate.edu/programs-of-study/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+263,Generations College Paralegal Studies,Paralegal Program,Illinois,,https://www.generations.edu/academics/associates-degree-programs/paralegal-studies-major/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+264,George Washington University,Paralegal Program,Washington,,https://www.gwu.edu,AAfPE Member,AAfPE,2025-12-26 18:45:30
+265,Georgia Piedmont Technical College Paralegal Studies,Paralegal Program,Georgia,,https://www.gptc.edu/programs/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+266,Grand Valley State University Paralegal,Paralegal Program,Michigan,,https://www.gvsu.edu/cj/certificate-in-paralegal-studies-172.htm,AAfPE Member,AAfPE,2025-12-26 18:45:30
+267,Guilford Technical Community College Paralegal Technology,Paralegal Program,North Carolina,,https://www.gtcc.edu/academics/academic-programs/programs/business-programs/paralegal-technology.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+268,Hamline University Online Paralegal Certificate,Paralegal Program,Minnesota,,https://www.hamline.edu/academics/graduate/online-paralegal-certificate,AAfPE Member,AAfPE,2025-12-26 18:45:30
+269,Harford Community College Paralegal Studies,Paralegal Program,Maryland,,https://www.harford.edu/academics/credit-programs/programs/paralegal-studies.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+270,Harrisburg Area Community College Paralegal Studies,Paralegal Program,Pennsylvania,,https://www.hacc.edu/ProgramsandCourses/paralegal-studies-5706.cfm,AAfPE Member,AAfPE,2025-12-26 18:45:30
+271,Highline Community College Paralegal AAS,Paralegal Program,Washington,,https://legal.highline.edu/programs/paralegal-aas/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+272,Hillsborough Community College Paralegal Studies,Paralegal Program,Florida,,https://www.hccfl.edu/academics/subjects/law-criminal-justice-security/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+273,Hofstra University Maurice A. Deane School of Law Paralegal Certificate,Paralegal Program,New York,,https://law.hofstra.edu/paralegal-certificate-program/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+274,Horry-Georgetown Technical College Paralegal,Paralegal Program,South Carolina,,https://www.hgtc.edu/academics/academic-departments/criminal-justice-paralegal-human-services/paralegal.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+275,Husson University Paralegal Certificate,Paralegal Program,Maine,,https://catalog.husson.edu/collegeofbusiness/undergraduate/schooloflegalstudies/legalstudies/certparalegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+276,IUPUI Paralegal Studies,Paralegal Program,Indiana,,https://liberalarts.indianapolis.iu.edu/programs/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+277,Illinois Central College Legal Studies Certificate,Paralegal Program,Illinois,,https://icc.edu/programs/legal-studies-certificate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+278,Illinois State University Legal Studies,Paralegal Program,Illinois,,https://illinoisstate.edu/academics/legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+279,Inver Hills Community College Paralegal,Paralegal Program,Iowa,,https://www.inverhills.edu/degrees-programs/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+280,Irvine Valley College,Paralegal Program,California,,https://www.ivc.edu/business/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+281,Ivy Tech Community College – Central Indiana Paralegal Studies,Paralegal Program,Indiana,,https://www.ivytech.edu/central/programs/all-academic-programs/school-of-public-affairs-social-services/legal-paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+282,Johnson County Community College Paralegal,Paralegal Program,Kansas,,https://www.jccc.edu/academics/credit/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+283,Johnston Community College Paralegal Technology,Paralegal Program,North Carolina,,https://www.johnstoncc.edu/programs/paralegal-technology.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+284,Kapi‘olani Community College BLT Legal,Paralegal Program,Hawaii,,https://www.kapiolani.hawaii.edu/programs/blt/legal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+285,LSU Paralegal Studies,Paralegal Program,Louisiana,,https://ce.lsu.edu/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+286,LaGuardia Community College Paralegal Studies,Paralegal Program,New York,,https://www.laguardia.edu/majors/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+287,Lakeland Community College (see homepage),Paralegal Program,Wisconsin,,https://www.lakeland.edu,AAfPE Member,AAfPE,2025-12-26 18:45:30
+288,Lakeshore Technical College Legal Studies/Paralegal,Paralegal Program,Wisconsin,,https://gotoltc.edu/programs-and-courses/career-areas/law-public-safety-security/legal-studiesparalegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+289,Lehigh Carbon Community College Paralegal,Paralegal Program,Pennsylvania,,https://www.lccc.edu/academics/programs/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+290,Lewis University Paralegal,Paralegal Program,Illinois,,https://www.lewisu.edu/academics/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+291,Lewis-Clark State College Paralegal,Paralegal Program,Idaho,,https://www.lcsc.edu/program-finder/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+292,Loyola University Chicago Paralegal Studies,Paralegal Program,Illinois,,https://www.luc.edu/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+293,Macomb Community College Paralegal,Paralegal Program,Michigan,,https://www.macomb.edu/programs-courses/programs/paralegal.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+294,Madison College Paralegal Studies,Paralegal Program,Wisconsin,,https://madisoncollege.edu/academics/programs/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+295,Madonna University Paralegal Studies,Paralegal Program,Michigan,,https://www.madonna.edu/academics/programs/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+296,Meredith College Paralegal,Paralegal Program,North Carolina,,https://www.meredith.edu/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+297,Metropolitan Community College (general),Paralegal Program,Missouri,,https://mcckc.edu,AAfPE Member,AAfPE,2025-12-26 18:45:30
+298,Metropolitan Community College – Penn Valley Paralegal,Paralegal Program,Missouri,,https://mcckc.edu/programs/paralegal/index.aspx,AAfPE Member,AAfPE,2025-12-26 18:45:30
+299,Miami Dade College Paralegal,Paralegal Program,Florida,,https://www.mdc.edu/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+300,Middlesex Community College Paralegal Studies,Paralegal Program,Massachusetts,,https://www.middlesex.mass.edu/academics/publicservice/publicserviceprograms/paralegalstudies.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+301,Midlands Technical College Paralegal AAS,Paralegal Program,South Carolina,,https://www.midlandstech.edu/programs-and-courses/education-and-public-service/paralegal-associate-degree,AAfPE Member,AAfPE,2025-12-26 18:45:30
+302,Mississippi University for Women Legal Studies,Paralegal Program,Mississippi,,https://www.muw.edu/legal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+303,"Missoula College, University of Montana Paralegal Certificate",Paralegal Program,Montana,,https://www.umt.edu/missoula-college/online-certificates/legal_studies.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+304,Missouri Western State University Legal Studies,Paralegal Program,Missouri,,https://www.missouriwestern.edu/criminal-justice-legal-studies/legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+305,Molloy University Paralegal Certificate,Paralegal Program,New York,,https://www.molloy.edu/academics/additional-programs/continuing-education/certificate-programs/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+306,Montclair State University Paralegal Studies,Paralegal Program,New Jersey,,https://www.montclair.edu/justice-studies/programs-of-study/paralegal-studies-program/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+307,Montgomery College Paralegal Studies,Paralegal Program,Maryland,,https://www.montgomerycollege.edu/academics/programs/paralegal-studies/index.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+308,Moraine Valley Community College Paralegal Studies,Paralegal Program,Illinois,,https://www.morainevalley.edu/academics/academic-programs/public-service/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+309,Mt. San Antonio College,Paralegal Program,California,,https://www.mtsac.edu/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+310,Nashville State Community College Paralegal Studies,Paralegal Program,Tennessee,,https://www.nscc.edu/academics/programs/paralegal-studies.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+311,Nassau Community College Paralegal AAS,Paralegal Program,New York,,https://collegecatalog.ncc.edu/current/programs/accounting_and_business_administration/paralegal_aas.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+312,National University,Paralegal Program,California,,https://www.nu.edu/degrees/professional-studies/programs/bachelor-science-paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+313,New York City College of Technology Paralegal,Paralegal Program,New York,,https://www.citytech.cuny.edu/law-paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+314,Newberry College (see homepage),Paralegal Program,South Carolina,,https://www.newberry.edu,AAfPE Member,AAfPE,2025-12-26 18:45:30
+315,North Hennepin Community College Paralegal,Paralegal Program,Minnesota,,https://www.nhcc.edu/academics/degree-pathways/business-and-information-systems/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+316,North Shore Community College Paralegal Studies,Paralegal Program,Massachusetts,,https://www.northshore.edu/academics/programs/pac/index.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+317,NorthWest Arkansas Community College,Paralegal Program,Arkansas,,https://www.nwacc.edu/academicdivisions/socbehavsci/paralegal.aspx,AAfPE Member,AAfPE,2025-12-26 18:45:30
+318,Northampton Community College Paralegal,Paralegal Program,Massachusetts,,https://northampton.edu/education-and-training/programs/paralegal.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+319,Northcentral Technical College Paralegal,Paralegal Program,Wisconsin,,https://www.ntc.edu/academics-training/programs/all/associate-degree/legal-studiesparalegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+320,Northeastern State University Legal Studies,Paralegal Program,Oklahoma,,https://academics.nsuok.edu/criminaljustice/DegreePrograms/LegalStudies.aspx,AAfPE Member,AAfPE,2025-12-26 18:45:30
+321,Northern Virginia Community College Paralegal Studies,Paralegal Program,Virginia,,https://www.nvcc.edu/academics/programs/paralegal-studies.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+322,Oakland Community College Paralegal,Paralegal Program,Michigan,,https://www.oaklandcc.edu/programs/plg/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+323,Oakland University Paralegal,Paralegal Program,Michigan,,https://www.oakland.edu/pace/business/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+324,Oakton College Paralegal Studies,Paralegal Program,Virginia,,https://www.oakton.edu/academics/list-of-programs/paralegal-studies.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+325,Oxnard College,Paralegal Program,California,,https://www.oxnardcollege.edu/departments/academic/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+326,Pasadena City College,Paralegal Program,California,,https://pasadena.edu/academics/divisions/business/paralegal-studies/index.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+327,Peirce College Paralegal Studies,Paralegal Program,Pennsylvania,,https://www.peirce.edu/degrees-programs/undergraduate/legal-studies/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+328,Pellissippi State Community College Paralegal,Paralegal Program,Tennessee,,https://pstcc.edu/academics/areas-of-study/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+329,Pitt Community College Paralegal Technology,Paralegal Program,North Carolina,,https://pittcc.edu/academics/academic-programs/public-services-and-fine-arts/paralegal-technology/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+330,Plaza College,Paralegal Program,Arizona,,https://plazacollege.edu/academics/school-of-business/legal-studies-certificate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+331,Quinnipiac University Legal Studies Certificate,Paralegal Program,Connecticut,,https://www.qu.edu/schools/arts-and-sciences/programs/minor/certificate-in-legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+332,Raritan Valley Community College Paralegal,Paralegal Program,New Jersey,,https://www.raritanval.edu/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+333,Reynolds Community College Paralegal AAS,Paralegal Program,Texas,,https://reynolds.edu/programs/program-pages/paralegal-studies-aas.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+334,Roane State Community College Paralegal,Paralegal Program,Tennessee,,https://www.roanestate.edu/?5597-Paralegal-Studies-Program=,AAfPE Member,AAfPE,2025-12-26 18:45:30
+335,Roosevelt University BA Paralegal Studies,Paralegal Program,Illinois,,https://www.roosevelt.edu/programs/bachelors-paralegal-studies-ba,AAfPE Member,AAfPE,2025-12-26 18:45:30
+336,Rowan College of South Jersey Paralegal AAS,Paralegal Program,New Jersey,,https://www.rcsj.edu/behavioralsciencesjustice/paralegal-aas-gloucester,AAfPE Member,AAfPE,2025-12-26 18:45:30
+337,SUNY Rockland Community College Legal Studies,Paralegal Program,New York,,https://sunyrockland.edu/programs/legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+338,Salt Lake Community College Paralegal Studies,Paralegal Program,Utah,,https://www.slcc.edu/paralegalstudies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+339,San Diego Miramar College,Paralegal Program,California,,https://sdmiramar.edu/programs/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+340,San Francisco State University,Paralegal Program,California,,https://cel.sfsu.edu/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+341,Savannah Technical College Paralegal Studies,Paralegal Program,Georgia,,https://www.savannahtech.edu/academics/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+342,Seminole State College Legal Assistant,Paralegal Program,Florida,,https://www.seminolestate.edu/legal-assistant/degrees-programs,AAfPE Member,AAfPE,2025-12-26 18:45:30
+343,Sinclair Community College Paralegal AAS,Paralegal Program,Ohio,,https://sinclair.edu/program/params/programCode/PAR-S-AAS/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+344,South Piedmont Community College Paralegal Technology,Paralegal Program,North Carolina,,https://spcc.edu/programs/paralegal-technology/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+345,South Puget Sound Community College Paralegal,Paralegal Program,Washington,,https://spscc.edu/government-public-admin-law/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+346,South Suburban College Paralegal/Legal Assistant,Paralegal Program,Illinois,,https://www.ssc.edu/academics/programs-of-study/legal-studies/paralegal-legal-assistant/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+347,South University – Savannah Campus Paralegal A.S.,Paralegal Program,Georgia,,https://www.southuniversity.edu/degree-programs/criminal-justice-and-legal-studies/paralegal-studies-as,AAfPE Member,AAfPE,2025-12-26 18:45:30
+348,Southwest Tennessee Community College Paralegal,Paralegal Program,Tennessee,,https://southwest.tn.edu/paralegal/index.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+349,Southwestern Illinois College Paralegal Studies,Paralegal Program,Illinois,,https://www.swic.edu/academics/career-degrees/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+350,Sowela Technical Community College Paralegal,Paralegal Program,Louisiana,,https://www.sowela.edu/programs/bat/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+351,Spokane Community College Paralegal,Paralegal Program,Washington,,https://scc.spokane.edu/What-to-Study/Public-Services/Legal-Careers/Paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+352,St. John's University Legal Studies,Paralegal Program,New York,,https://www.stjohns.edu/offices-departments/legal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+353,St. Petersburg College Paralegal A.S.,Paralegal Program,Florida,,https://www.spcollege.edu/future-students/degrees-training/public-safety-public-policy-and-legal-studies/paralegal-studies-as-degree,AAfPE Member,AAfPE,2025-12-26 18:45:30
+354,State College of Florida Paralegal Certificate,Paralegal Program,Florida,,https://www.scf.edu/programs/paralegal-legal-assisting-certifcate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+355,Stevenson University Legal Studies,Paralegal Program,Pennsylvania,,https://www.stevenson.edu/academics/undergraduate-programs/legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+356,Suffolk University Paralegal Studies,Paralegal Program,Massachusetts,,https://www.suffolk.edu/cas/degrees-programs/political-science-legal-studies/undergraduate/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+357,Sullivan University Paralegal Studies,Paralegal Program,Kentucky,,https://www.sullivan.edu/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+358,Tarleton State University Certified Paralegal,Paralegal Program,Texas,,https://www.tarleton.edu/extendeded/certified-paralegal-voucher-included/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+359,Tarrant County College Paralegal Studies,Paralegal Program,Texas,,https://www.tccd.edu/academics/courses-and-programs/programs-a-z/credit/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+360,Technical College of the Lowcountry Paralegal AAS,Paralegal Program,South Carolina,,https://www.tcl.edu/academics/pathways/law-criminal-justice/paralegal-associate-in-applied-science/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+361,Texas Southmost College Legal Studies,Paralegal Program,Texas,,https://www.tsc.edu/academics-and-career-programs/.../legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+362,Texas State University–San Marcos Paralegal Cert,Paralegal Program,Texas,,https://www.polisci.txst.edu/…/certificates/paralegal.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+363,Truckee Meadows Community College AAS Paralegal & Law,Paralegal Program,Nevada,,https://catalog.tmcc.edu/degrees-certificates/paralegal-law-aas/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+364,Tulane University Paralegal Studies,Paralegal Program,Louisiana,,https://sopa.tulane.edu/degrees-programs/certificates/post-baccalaureate/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+365,Tulsa Community College Legal Studies,Paralegal Program,Oklahoma,,https://www.tulsacc.edu/academics/programs-courses/legal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+366,Tyler Junior College Paralegal,Paralegal Program,Texas,,https://tjc.edu/programs/legal-studies-paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+367,UC Irvine Extension,Paralegal Program,California,,https://ce.uci.edu/programs/law/paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+368,UC Riverside Extension,Paralegal Program,California,,https://extension.ucr.edu/certificates/paralegalstudies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+369,UC San Diego Extension,Paralegal Program,California,,https://extendedstudies.ucsd.edu/educational-programs/paralegal-certificate-program,AAfPE Member,AAfPE,2025-12-26 18:45:30
+370,UCLA Extension,Paralegal Program,California,,https://www.uclaextension.edu/legal-programs/paralegal-studies/certificate/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+371,UMGC Legal Studies,Paralegal Program,Maryland,,https://www.umgc.edu/online-degrees/bachelors/legal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+372,UMass Lowell Online Paralegal Certificate,Paralegal Program,Massachusetts,,https://gps.uml.edu/certificates/undergrad/online-paralegal-certificate.cfm,AAfPE Member,AAfPE,2025-12-26 18:45:30
+373,UNC Chapel Hill Paralegal,Paralegal Program,North Carolina,,https://paralegal.web.unc.edu/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+374,University of Alaska Anchorage,Paralegal Program,Alaska,,https://www.uaa.alaska.edu/academics/college-of-health/departments/justice-center/legl/index.cshtml,AAfPE Member,AAfPE,2025-12-26 18:45:30
+375,University of Alaska Fairbanks,Paralegal Program,Alaska,,https://ecampus.uaf.edu/programs/associate-degrees/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+376,University of Cincinnati Clermont Paralegal,Paralegal Program,Ohio,,https://ucclermont.edu/academics/academic-departments/business-law/blt-programs/paralegal/paralegal-ecurr.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+377,University of Hartford Paralegal Studies,Paralegal Program,Connecticut,,https://www.hartford.edu/academics/graduate-professional-studies/programs/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+378,University of La Verne,Paralegal Program,California,,https://artsci.laverne.edu/legal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+379,University of Oklahoma College of Law Paralegal Studies,Paralegal Program,Oklahoma,,https://law.ou.edu/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+380,University of San Diego,Paralegal Program,California,,https://www.sandiego.edu/law/academics/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+381,University of Southern Mississippi Legal Studies,Paralegal Program,Mississippi,,https://www.usm.edu/undergraduate-programs/legal-studies.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+382,University of Toledo Legal & Paralegal Studies,Paralegal Program,Ohio,,https://www.utoledo.edu/programs/undergrad/legal-and-paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+383,University of Washington PCE Paralegal Studies,Paralegal Program,Washington,,https://www.pce.uw.edu/certificates/paralegal-studies,AAfPE Member,AAfPE,2025-12-26 18:45:30
+384,University of West Florida Online Paralegal Certificate,Paralegal Program,Florida,,https://uwf.edu/continuinged/programs/career-training/online-paralegal-certificate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+385,Victor Valley College,Paralegal Program,California,,https://www.vvc.edu/paralegal-studies-program,AAfPE Member,AAfPE,2025-12-26 18:45:30
+386,Villanova University Paralegal Certificate,Paralegal Program,Pennsylvania,,https://www1.villanova.edu/university/professional-studies/academics/professional-education/paralegal-certificate.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+387,Wallace State Community College,Paralegal Program,Alabama,,https://www.wallacestate.edu/programs/academic-division/paralegal/index.html,AAfPE Member,AAfPE,2025-12-26 18:45:30
+388,Walters State Community College Paralegal Studies,Paralegal Program,Tennessee,,https://ws.edu/academics/programs/tc/paralegal-studies.aspx,AAfPE Member,AAfPE,2025-12-26 18:45:30
+389,Webster University Paralegal Studies,Paralegal Program,Missouri,,https://www.webster.edu/humanities-social-sciences/lcsj/paralegal-studies.php,AAfPE Member,AAfPE,2025-12-26 18:45:30
+390,Western Kentucky University Paralegal Certificate,Paralegal Program,Kentucky,,https://catalog.wku.edu/undergraduate/arts-letters/political-science/paralegal-studies-certificate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+391,Western Technical College Paralegal,Paralegal Program,Wisconsin,,https://www.westerntc.edu/legal-studies-paralegal,AAfPE Member,AAfPE,2025-12-26 18:45:30
+392,Wharton County Junior College Paralegal,Paralegal Program,Texas,,https://www.wcjc.edu/programs/areas-of-interest/law-public-service/paralegal.aspx,AAfPE Member,AAfPE,2025-12-26 18:45:30
+393,Widener University Delaware Law School Paralegal Certificate,Paralegal Program,Delaware,,https://delawarelaw.widener.edu/prospective-students/non-jd-programs/paralegal/paralegal-certificate/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+394,Wilbur Wright College Paralegal,Paralegal Program,Illinois,,https://www.ccc.edu/wright/departments/paralegal/,AAfPE Member,AAfPE,2025-12-26 18:45:30
+395,Wilmington University Paralegal Certificate,Paralegal Program,Delaware,,https://www.wilmu.edu/behavioralscience/paralegal-certificate.aspx,AAfPE Member,AAfPE,2025-12-26 18:45:30
+396,Winona State University Paralegal Studies,Paralegal Program,Minnesota,,https://www.winona.edu/academics/programs/paralegal-studies/,AAfPE Member,AAfPE,2025-12-26 18:45:30

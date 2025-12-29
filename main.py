@@ -15,11 +15,16 @@ from tqdm import tqdm
 from config.settings import validate_config, OUTPUT_DIR
 from modules.utils import setup_logger, save_dataframe
 from modules.target_discovery import get_all_targets
-from modules.contact_extractor import scrape_multiple_institutions
+from modules.contact_extractor import run_async_scraping  # Sprint 2.1: Async architecture
 from modules.email_validator import enrich_contact_data
 from modules.deduplication import deduplicate_contacts, load_existing_database, compare_with_existing
 from modules.statistics import calculate_contact_statistics
 from modules.excel_output import create_excel_workbook
+
+# Sprint 2-3 optimization modules (for statistics display)
+from modules.fetch_router import get_fetch_router
+from modules.domain_rate_limiter import get_domain_rate_limiter
+from modules.timeout_manager import get_timeout_manager
 
 
 # US State Abbreviations
@@ -279,13 +284,15 @@ def main():
             print("=" * 70)
             return
 
-        # Phase 2: Contact Extraction
+        # Phase 2: Contact Extraction (with async parallelization)
         print("\n" + "=" * 70)
-        print("PHASE 2: EXTRACTING CONTACTS")
+        print("PHASE 2: EXTRACTING CONTACTS (ASYNC MODE)")
         print("=" * 70)
         print()
 
-        contacts = scrape_multiple_institutions(targets, max_institutions=max_institutions)
+        # Use async scraper with 6x parallelization (Sprint 2.1)
+        logger.info("Using async architecture with 6 parallel workers")
+        contacts = run_async_scraping(targets, max_institutions=max_institutions, max_parallel=6)
 
         # Phase 3: Email Validation & Enrichment (if contacts found)
         if not contacts.empty:
@@ -432,8 +439,55 @@ def main():
             )
             logger.success(f"Contacts saved to: {contacts_file}")
 
-        # Final summary
+        # Display optimization statistics (Sprint 2-3)
         print("\n" + "=" * 70)
+        print("OPTIMIZATION STATISTICS (SPRINT 2-3)")
+        print("=" * 70)
+        print()
+
+        # Fetch router stats
+        try:
+            router = get_fetch_router()
+            router_stats = router.get_stats_summary()
+            print("Smart Fetch Routing (Sprint 2.3):")
+            print(f"  Domains tracked: {router_stats['domains_tracked']}")
+            print(f"  Static fetches: {router_stats['static_total']} ({router_stats['static_rate']:.1%} success)")
+            print(f"  Playwright fetches: {router_stats['playwright_total']} ({router_stats['playwright_rate']:.1%} success)")
+            print(f"  Total fetches: {router_stats['total_fetches']}")
+            print()
+        except:
+            pass  # Router stats not available
+
+        # Domain rate limiter stats
+        try:
+            rate_limiter = get_domain_rate_limiter()
+            limiter_stats = rate_limiter.get_stats()
+            print("Per-Domain Rate Limiting (Sprint 3.1):")
+            print(f"  Total requests: {limiter_stats['total_requests']}")
+            print(f"  Total delays: {limiter_stats['total_delays']}s")
+            print(f"  Avg delay per request: {limiter_stats['avg_delay_per_request']}s")
+            print(f"  Domains accessed: {limiter_stats['domains_accessed']}")
+            print(f"  Domains with errors: {limiter_stats['domains_with_errors']}")
+            print()
+        except:
+            pass  # Rate limiter stats not available
+
+        # Timeout manager stats
+        try:
+            timeout_mgr = get_timeout_manager()
+            timeout_stats = timeout_mgr.get_stats()
+            print("Intelligent Timeout Tuning (Sprint 3.3):")
+            print(f"  Total requests: {timeout_stats['total_requests']}")
+            print(f"  Timeouts: {timeout_stats['total_timeouts']} ({timeout_stats['timeout_rate']}%)")
+            print(f"  Fast-fails: {timeout_stats['total_fast_fails']}")
+            print(f"  Avg timeout: {timeout_stats['avg_timeout_ms']}ms (default: {timeout_stats['default_timeout_ms']}ms)")
+            print(f"  Domains tracked: {timeout_stats['domains_tracked']}")
+            print()
+        except:
+            pass  # Timeout stats not available
+
+        # Final summary
+        print("=" * 70)
         print("EXTRACTION COMPLETE")
         print("=" * 70)
         print(f"Targets saved to: {targets_file}")

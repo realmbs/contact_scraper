@@ -7,6 +7,7 @@ Uses intelligent directory discovery, fuzzy title matching, and email pattern de
 
 import re
 import time
+import asyncio
 from typing import List, Dict, Optional, Tuple, Set
 from urllib.parse import urljoin, urlparse
 from collections import Counter, defaultdict
@@ -20,15 +21,20 @@ from fake_useragent import UserAgent
 
 try:
     from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+    from playwright.async_api import TimeoutError as AsyncPlaywrightTimeoutError
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
+    PlaywrightTimeoutError = Exception
+    AsyncPlaywrightTimeoutError = Exception
     logger.warning("Playwright not available. Install with: pip install playwright && playwright install")
 
 from config.settings import (
     LAW_SCHOOL_ROLES,
     PARALEGAL_PROGRAM_ROLES,
     ALL_TARGET_ROLES,
+    LAW_SCHOOL_ROLES_EXPANDED,
+    PARALEGAL_PROGRAM_ROLES_EXPANDED,
     USE_RANDOM_USER_AGENT,
     REQUEST_TIMEOUT,
     RATE_LIMIT_DELAY,
@@ -51,9 +57,22 @@ from modules.utils import (
     extract_domain,
     get_timestamp,
 )
+from modules.title_normalizer import (
+    normalize_title,
+    should_exclude_title,
+    NormalizedTitle,
+)
+from modules.timeout_manager import get_timeout_manager
+from modules.domain_rate_limiter import get_domain_rate_limiter
 
 # Initialize logger
 setup_logger("contact_extractor")
+
+# Initialize timeout manager (Sprint 3.3)
+timeout_manager = get_timeout_manager(default_timeout=PLAYWRIGHT_TIMEOUT)
+
+# Initialize domain rate limiter (Sprint 3.1)
+domain_rate_limiter = get_domain_rate_limiter(default_delay=2.0)
 
 # User agent for requests
 ua = UserAgent() if USE_RANDOM_USER_AGENT else None
@@ -74,6 +93,8 @@ def fetch_page_with_playwright(url: str) -> Optional[BeautifulSoup]:
     """
     Fetch a web page using Playwright (headless browser with JavaScript support).
 
+    Uses intelligent timeout tuning based on domain performance (Sprint 3.3).
+
     Args:
         url: URL to fetch
 
@@ -82,6 +103,13 @@ def fetch_page_with_playwright(url: str) -> Optional[BeautifulSoup]:
     """
     if not PLAYWRIGHT_AVAILABLE or not ENABLE_PLAYWRIGHT:
         return None
+
+    # Per-domain rate limiting (Sprint 3.1)
+    domain_rate_limiter.wait_if_needed(url)
+
+    # Get adaptive timeout for this domain (Sprint 3.3)
+    page_timeout, selector_timeout = timeout_manager.get_timeout(url)
+    start_time = time.time()
 
     try:
         with sync_playwright() as p:
@@ -92,10 +120,10 @@ def fetch_page_with_playwright(url: str) -> Optional[BeautifulSoup]:
             )
             page = context.new_page()
 
-            logger.info(f"Fetching with Playwright: {url}")
+            logger.info(f"Fetching with Playwright: {url} (timeout: {page_timeout}ms)")
 
             # Navigate to page (use domcontentloaded for better reliability)
-            page.goto(url, wait_until='domcontentloaded', timeout=PLAYWRIGHT_TIMEOUT)
+            page.goto(url, wait_until='domcontentloaded', timeout=page_timeout)
 
             # Wait for common content selectors to appear
             common_selectors = [
@@ -106,7 +134,7 @@ def fetch_page_with_playwright(url: str) -> Optional[BeautifulSoup]:
 
             for selector in common_selectors:
                 try:
-                    page.wait_for_selector(selector, timeout=3000)
+                    page.wait_for_selector(selector, timeout=selector_timeout)
                     logger.debug(f"Found selector: {selector}")
                     break
                 except PlaywrightTimeoutError:
@@ -126,11 +154,103 @@ def fetch_page_with_playwright(url: str) -> Optional[BeautifulSoup]:
 
             browser.close()
 
+            # Record success with load time
+            load_time = time.time() - start_time
+            timeout_manager.record_success(url, load_time)
+            domain_rate_limiter.record_success(url)
+
             soup = BeautifulSoup(content, 'html.parser')
-            logger.success(f"Successfully fetched with Playwright: {url}")
+            logger.success(f"Successfully fetched with Playwright: {url} ({load_time:.1f}s)")
             return soup
 
     except PlaywrightTimeoutError as e:
+        timeout_manager.record_timeout(url)
+        domain_rate_limiter.record_error(url, status_code=None)
+        logger.error(f"Playwright timeout for {url}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Playwright error for {url}: {e}")
+        # Check if it's an HTTP error and record it
+        status_code = getattr(e, 'status_code', None)
+        if status_code:
+            timeout_manager.record_http_error(url, status_code)
+            domain_rate_limiter.record_error(url, status_code)
+        else:
+            domain_rate_limiter.record_error(url, status_code=None)
+        return None
+
+
+async def fetch_page_with_playwright_async(url: str, browser_pool=None) -> Optional[BeautifulSoup]:
+    """
+    Fetch a web page using Playwright with browser pooling (async version).
+
+    This is the optimized version that uses persistent browsers from a pool,
+    eliminating the 2-3s browser launch overhead on every fetch.
+
+    Args:
+        url: URL to fetch
+        browser_pool: BrowserPool instance (if None, creates one)
+
+    Returns:
+        BeautifulSoup object or None if failed
+    """
+    if not PLAYWRIGHT_AVAILABLE or not ENABLE_PLAYWRIGHT:
+        return None
+
+    # Import here to avoid circular dependency
+    from modules.browser_pool import get_browser_pool
+
+    try:
+        # Get or create browser pool
+        if browser_pool is None:
+            browser_pool = await get_browser_pool(pool_size=3)
+
+        # Acquire browser from pool
+        browser, context, page = await browser_pool.acquire()
+
+        try:
+            logger.info(f"Fetching with Playwright: {url}")
+
+            # Navigate to page (use domcontentloaded for better reliability)
+            await page.goto(url, wait_until='domcontentloaded', timeout=PLAYWRIGHT_TIMEOUT)
+
+            # Wait for common content selectors to appear
+            common_selectors = [
+                '.profile', '.person', '.staff', '.faculty', '.contact',
+                '[class*="profile"]', '[class*="person"]', '[class*="staff"]',
+                'table', '.directory', '[role="main"]'
+            ]
+
+            for selector in common_selectors:
+                try:
+                    await page.wait_for_selector(selector, timeout=3000)
+                    logger.debug(f"Found selector: {selector}")
+                    break
+                except AsyncPlaywrightTimeoutError:
+                    continue
+
+            # Additional wait for dynamic content
+            await page.wait_for_timeout(2000)
+
+            # Get page content
+            content = await page.content()
+
+            # Save screenshot if enabled
+            if SAVE_SCREENSHOTS:
+                screenshot_path = SCREENSHOTS_DIR / f"{extract_domain(url)}_{get_timestamp()}.png"
+                await page.screenshot(path=str(screenshot_path))
+                logger.debug(f"Screenshot saved: {screenshot_path}")
+
+            soup = BeautifulSoup(content, 'html.parser')
+            logger.success(f"Successfully fetched with Playwright: {url}")
+
+            return soup
+
+        finally:
+            # Always release browser back to pool
+            await browser_pool.release(browser, context, page)
+
+    except AsyncPlaywrightTimeoutError as e:
         logger.error(f"Playwright timeout for {url}: {e}")
         return None
     except Exception as e:
@@ -174,7 +294,12 @@ def fetch_page_static(url: str) -> Optional[BeautifulSoup]:
 
 def fetch_page_smart(url: str, force_playwright: bool = False) -> Optional[BeautifulSoup]:
     """
-    Smart page fetching: try static first, fall back to Playwright if needed.
+    Smart page fetching with intelligent routing (Sprint 2.3).
+
+    Routes to static (fast) or Playwright (slow) based on:
+    - URL patterns (directory, API endpoints, etc.)
+    - Historical success rates per domain
+    - Page content analysis
 
     Args:
         url: URL to fetch
@@ -183,15 +308,25 @@ def fetch_page_smart(url: str, force_playwright: bool = False) -> Optional[Beaut
     Returns:
         BeautifulSoup object or None if failed
     """
-    if force_playwright and ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
-        return fetch_page_with_playwright(url)
+    # Import fetch router (lazy import to avoid circular dependency)
+    from modules.fetch_router import get_fetch_router
+    router = get_fetch_router()
 
-    # Try static first (faster)
+    # Get routing recommendation
+    use_playwright, reason = router.should_use_playwright(url, force=force_playwright)
+
+    if use_playwright and ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
+        logger.info(f"Routing to Playwright: {reason}")
+        soup = fetch_page_with_playwright(url)
+        router.record_fetch_result(url, 'playwright', soup is not None)
+        return soup
+
+    # Router recommended static - try it first
+    logger.info(f"Routing to static: {reason}")
     soup = fetch_page_static(url)
 
     if soup:
         # Check if page has meaningful contact content
-        # Look for indicators that contacts are actually present
         text_content = soup.get_text(strip=True)
 
         # Count potential contact indicators
@@ -200,25 +335,42 @@ def fetch_page_smart(url: str, force_playwright: bool = False) -> Optional[Beaut
             keyword in str(x).lower() for keyword in ['profile', 'person', 'staff', 'faculty', 'contact']
         )))
 
-        # If page seems to have actual contact data, use it
-        if has_emails > 5 or has_contact_sections > 5:
+        # Determine if static fetch was successful
+        has_content = has_emails > 5 or has_contact_sections > 5
+        lacks_content = len(text_content) < 500 or (has_emails == 0 and has_contact_sections == 0)
+
+        # Record result
+        if has_content:
             logger.debug(f"Page has contact indicators (emails: {has_emails}, sections: {has_contact_sections})")
+            router.record_fetch_result(url, 'static', True, has_emails + has_contact_sections)
             return soup
 
-        # If page is empty or lacks contact data, try Playwright
-        if len(text_content) < 500 or (has_emails == 0 and has_contact_sections == 0):
+        # Page lacks contact data - try Playwright as fallback
+        if lacks_content:
             logger.info(f"Page lacks contact data (chars: {len(text_content)}, emails: {has_emails}, sections: {has_contact_sections}), trying Playwright...")
+            router.record_fetch_result(url, 'static', False, 0)
+
             if ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
                 playwright_soup = fetch_page_with_playwright(url)
                 if playwright_soup:
+                    router.record_fetch_result(url, 'playwright', True)
                     return playwright_soup
+                else:
+                    router.record_fetch_result(url, 'playwright', False, 0)
 
+        # Static worked but no strong indicators - return it anyway
+        router.record_fetch_result(url, 'static', True, 1)
         return soup
 
-    # Static fetch failed, try Playwright
+    # Static fetch failed completely - try Playwright
+    logger.info("Static fetch failed, trying Playwright...")
+    router.record_fetch_result(url, 'static', False, 0)
+
     if ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
-        logger.info("Static fetch failed, trying Playwright...")
-        return fetch_page_with_playwright(url)
+        playwright_soup = fetch_page_with_playwright(url)
+        success = playwright_soup is not None
+        router.record_fetch_result(url, 'playwright', success, 1 if success else 0)
+        return playwright_soup
 
     return None
 
@@ -230,10 +382,18 @@ def fetch_page_smart(url: str, force_playwright: bool = False) -> Optional[Beaut
 def match_title_to_role(
     title: str,
     target_roles: List[str],
-    threshold: int = 70
-) -> Tuple[Optional[str], int, int]:
+    threshold: int = 70,
+    return_all_matches: bool = False
+) -> Tuple[Optional[str], int, int, Optional[List[Tuple[str, int]]], Optional[NormalizedTitle]]:
     """
-    Match a job title to target roles using fuzzy matching.
+    Match a job title to target roles using intelligent normalization + fuzzy matching.
+
+    NEW FEATURES (Phase 1 - Intelligent Matching):
+    - Title normalization (expand abbreviations, extract modifiers)
+    - Exclusion filtering (student, emeritus, visiting roles)
+    - Granular 5-tier confidence scoring
+    - Multi-role extraction (capture all matching roles)
+    - Metadata preservation (interim, acting, co-director flags)
 
     Uses multiple fuzzy matching strategies:
     1. Token sort ratio (handles word order variations)
@@ -241,27 +401,43 @@ def match_title_to_role(
     3. Keyword detection (specific role keywords)
 
     Args:
-        title: Job title to match
+        title: Raw job title to match
         target_roles: List of target role names
         threshold: Minimum fuzzy match score (0-100)
+        return_all_matches: If True, return all roles above threshold (not just best)
 
     Returns:
-        Tuple of (matched_role, confidence_score, match_score)
+        Tuple of (matched_role, confidence_score, match_score, all_matches, normalized_title)
         - matched_role: Best matching role name or None
         - confidence_score: Confidence points for scoring (0-20)
         - match_score: Fuzzy match score (0-100)
+        - all_matches: List of (role, score) tuples for all matches (if return_all_matches=True)
+        - normalized_title: NormalizedTitle object with metadata
     """
-    title_clean = clean_text(title).lower()
+    if not title or not isinstance(title, str):
+        return None, 0, 0, None, None
+
+    # Step 1: Quick exclusion check (fast pre-filter)
+    if should_exclude_title(title):
+        logger.debug(f"Title excluded: {title}")
+        return None, 0, 0, None, None
+
+    # Step 2: Normalize title
+    normalized = normalize_title(title)
+
+    # Double-check exclusion after normalization
+    if normalized.should_exclude:
+        logger.debug(f"Title excluded after normalization: {title} → {normalized.normalized}")
+        return None, 0, 0, None, normalized
+
+    # Step 3: Use normalized title for fuzzy matching
+    title_clean = clean_text(normalized.normalized).lower()
 
     if not title_clean:
-        return None, 0, 0
+        return None, 0, 0, None, normalized
 
-    best_match = None
-    best_score = 0
-
-    # Keywords that boost confidence for each category
-    law_keywords = ['law', 'legal', 'library', 'librarian', 'dean', 'experiential', 'clinical', 'writing']
-    paralegal_keywords = ['paralegal', 'legal studies', 'workforce', 'career', 'technical']
+    # Step 4: Find all matching roles
+    role_matches = []  # List of (role, score) tuples
 
     for role in target_roles:
         role_clean = clean_text(role).lower()
@@ -274,30 +450,94 @@ def match_title_to_role(
         # Use the best score from different methods
         score = max(token_sort, partial, simple)
 
-        # Boost score if key words match
+        # Smarter keyword matching - require role-specific words, not just generic titles
         role_words = set(role_clean.split())
         title_words = set(title_clean.split())
         common_words = role_words.intersection(title_words)
 
-        if common_words:
-            # Boost based on number of matching words
-            word_boost = min(15, len(common_words) * 5)
+        # Generic role words (don't boost score on these alone)
+        generic_role_words = {'director', 'dean', 'coordinator', 'assistant', 'associate',
+                             'manager', 'head', 'chair', 'chief', 'officer'}
+
+        # Role-specific context words (these ARE meaningful)
+        context_words = {'library', 'librarian', 'it', 'information', 'technology', 'internet',
+                        'clinical', 'legal', 'writing', 'academic', 'affairs', 'student',
+                        'students', 'experiential', 'learning', 'paralegal', 'services',
+                        'reference', 'instructional', 'programs', 'clinic', 'faculty'}
+
+        # Check if we have meaningful matching words (not just generic titles)
+        generic_matches = common_words.intersection(generic_role_words)
+        context_matches = common_words.intersection(context_words)
+        other_matches = common_words - generic_matches - context_matches
+
+        # Only boost if we have role-specific matches (context or other non-generic words)
+        meaningful_matches = context_matches.union(other_matches)
+
+        if meaningful_matches:
+            # Boost based on meaningful word matches (not just "director" or "dean")
+            word_boost = min(10, len(meaningful_matches) * 5)
             score = min(100, score + word_boost)
 
-        if score > best_score:
-            best_score = score
-            best_match = role
+        # Penalty: Professor titles shouldn't match administrative director roles
+        if 'professor' in title_words and 'professor' not in role_words:
+            # Strong penalty unless this is a faculty director/dean role
+            if not any(word in role_clean for word in ['faculty', 'academic', 'dean']):
+                score = max(0, score - 20)  # Heavy penalty for professor → admin mismatch
 
-    # Calculate confidence points (0-20 for title match)
-    confidence_score = 0
+        # Penalty: Highly specific roles require their context word to match
+        # Example: "IT Director" requires "IT" or "technology" in title
+        highly_specific_roles = {
+            'it': ['it', 'information', 'technology', 'internet'],
+            'library': ['library', 'librarian'],
+            'clinical': ['clinical', 'clinic'],
+            'legal writing': ['legal', 'writing'],
+            'experiential': ['experiential', 'learning'],
+            'paralegal': ['paralegal'],
+        }
+
+        for specific_keyword, required_words in highly_specific_roles.items():
+            if specific_keyword in role_clean:
+                # Check if ANY of the required words appear in title
+                if not any(req_word in title_clean for req_word in required_words):
+                    # Title doesn't have the specific context - heavy penalty
+                    score = max(0, score - 25)
+                    break  # Only apply one penalty
+
+        # Collect all matches above threshold
+        if score >= threshold:
+            role_matches.append((role, score))
+
+    # Sort by score (best first)
+    role_matches.sort(key=lambda x: x[1], reverse=True)
+
+    if not role_matches:
+        return None, 0, 0, None, normalized
+
+    # Step 5: Get best match
+    best_match, best_score = role_matches[0]
+
+    # Step 6: Calculate confidence points (0-20 for title match) - GRANULAR 5-TIER SYSTEM
     if best_score >= 90:
-        confidence_score = 20  # Exact or very close match
-    elif best_score >= threshold:
-        confidence_score = 10  # Good match
+        base_confidence = 20  # Exact or very close match
+    elif best_score >= 85:
+        base_confidence = 17  # Near-exact match
+    elif best_score >= 80:
+        base_confidence = 14  # Strong match
+    elif best_score >= 75:
+        base_confidence = 11  # Good match
+    elif best_score >= 70:
+        base_confidence = 8   # Acceptable match
     else:
-        best_match = None  # Below threshold
+        base_confidence = 0   # Below threshold (shouldn't happen)
 
-    return best_match, confidence_score, best_score
+    # Step 7: Apply confidence modifiers from normalization
+    confidence_score = base_confidence + normalized.confidence_modifier
+    confidence_score = max(0, min(20, confidence_score))  # Clamp to 0-20
+
+    # Step 8: Return results
+    all_matches = role_matches if return_all_matches else None
+
+    return best_match, confidence_score, best_score, all_matches, normalized
 
 
 def calculate_contact_confidence(
@@ -378,12 +618,13 @@ def find_directory_pages(
     program_type: str = 'law'
 ) -> List[str]:
     """
-    Find directory/staff pages on institution website.
+    Find directory/staff pages on institution website with intelligent prioritization.
 
-    Looks for common patterns in navigation and links:
-    - /faculty, /staff, /administration
-    - /directory, /people, /about/people
-    - /our-team, /leadership
+    Scores URLs based on likelihood of containing target contacts:
+    - High priority (score 100): /profiles, /directory, /personnel, /staff-directory
+    - Medium priority (score 50): /faculty, /staff, /administration
+    - Low priority (score 25): /about/people, /team
+    - Excluded (score 0): /admissions, /scholarship, /news, /contact-us
 
     Args:
         base_url: Institution's base URL
@@ -391,57 +632,144 @@ def find_directory_pages(
         program_type: 'law' or 'paralegal' for context-specific searching
 
     Returns:
-        List of directory page URLs
+        List of directory page URLs sorted by priority (best first)
     """
-    directory_urls = set()
+    directory_urls = {}  # URL -> priority score
 
-    # Common directory page patterns
-    patterns = [
-        r'faculty',
-        r'staff',
-        r'people',
-        r'directory',
+    # HIGH PRIORITY patterns (score: 100) - most likely to have contacts
+    high_priority_patterns = [
+        r'profile',      # /faculty/profiles, /staff-profiles
+        r'directory',    # /directory, /staff-directory, /people-directory
+        r'personnel',    # /personnel, /staff-personnel
+        r'bio',          # /bios, /faculty-bios
+        r'roster',       # /staff-roster, /faculty-roster
+        r'listing',      # /faculty-listing
+    ]
+
+    # MEDIUM PRIORITY patterns (score: 50)
+    medium_priority_patterns = [
+        r'faculty(?!.*scholarship)(?!.*workshop)',  # /faculty but NOT /faculty/scholarship
+        r'staff(?!.*portal)',                        # /staff but NOT /staff-portal
+        r'people(?!.*\babout\b)',                    # /people but NOT /about/people
         r'administration',
-        r'team',
         r'leadership',
-        r'contact',
+        r'team',
+    ]
+
+    # LOW PRIORITY patterns (score: 25) - less likely but still worth checking
+    low_priority_patterns = [
         r'about.*people',
         r'about.*staff',
         r'about.*faculty',
+        r'contact.*directory',  # /contact-directory OK
     ]
 
     # Program-specific patterns
     if program_type == 'law':
-        patterns.extend([
-            r'library.*staff',
+        high_priority_patterns.extend([
+            r'library.*staff',      # /library/staff
+            r'faculty.*profiles',   # /faculty/profiles
+        ])
+        medium_priority_patterns.extend([
             r'clinical.*faculty',
             r'academic.*affairs',
         ])
     elif program_type == 'paralegal':
-        patterns.extend([
+        high_priority_patterns.extend([
             r'paralegal.*faculty',
-            r'legal.*studies',
-            r'department',
+            r'legal.*studies.*faculty',
+        ])
+        medium_priority_patterns.extend([
+            r'department.*staff',
         ])
 
-    # Find all links
+    # EXCLUSION patterns - skip these URLs entirely
+    exclusion_patterns = [
+        r'admissions?(?!.*staff)',  # /admissions, /admission (unless /admissions-staff)
+        r'scholarship',              # /faculty/scholarship
+        r'workshop',                 # /faculty/workshops
+        r'apply',                    # /apply, /how-to-apply
+        r'contact-us',               # /contact-us forms
+        r'contact\b(?!.*directory)', # /contact (unless /contact-directory)
+        r'news',                     # /news
+        r'events?',                  # /events
+        r'calendar',                 # /calendar
+        r'student.*portal',          # /student-portal
+        r'alumni',                   # /alumni
+        r'donate',                   # /donate
+        r'giving',                   # /giving
+    ]
+
+    # Find all links on homepage
     for link in soup.find_all('a', href=True):
         href = link['href'].lower()
         text = clean_text(link.get_text()).lower()
 
-        # Check if URL or link text matches patterns
-        for pattern in patterns:
-            if re.search(pattern, href) or re.search(pattern, text):
-                # Construct absolute URL
-                full_url = urljoin(base_url, link['href'])
+        # Construct absolute URL
+        full_url = urljoin(base_url, link['href'])
 
-                # Validate and add
-                if validate_url(full_url):
-                    directory_urls.add(normalize_url(full_url))
-                    logger.debug(f"Found directory page: {full_url}")
+        # Validate URL
+        if not validate_url(full_url):
+            continue
+
+        # Normalize URL
+        normalized_url = normalize_url(full_url)
+
+        # Check exclusions first
+        excluded = False
+        for pattern in exclusion_patterns:
+            if re.search(pattern, href) or re.search(pattern, text):
+                excluded = True
+                logger.debug(f"Excluded URL (matches {pattern}): {normalized_url}")
                 break
 
-    return list(directory_urls)
+        if excluded:
+            continue
+
+        # Calculate priority score
+        score = 0
+        matched_pattern = None
+
+        # Check high priority
+        for pattern in high_priority_patterns:
+            if re.search(pattern, href) or re.search(pattern, text):
+                score = 100
+                matched_pattern = pattern
+                break
+
+        # Check medium priority if not high
+        if score == 0:
+            for pattern in medium_priority_patterns:
+                if re.search(pattern, href) or re.search(pattern, text):
+                    score = 50
+                    matched_pattern = pattern
+                    break
+
+        # Check low priority if still not matched
+        if score == 0:
+            for pattern in low_priority_patterns:
+                if re.search(pattern, href) or re.search(pattern, text):
+                    score = 25
+                    matched_pattern = pattern
+                    break
+
+        # Add to results if matched
+        if score > 0:
+            # If URL already exists, keep higher score
+            if normalized_url in directory_urls:
+                directory_urls[normalized_url] = max(directory_urls[normalized_url], score)
+            else:
+                directory_urls[normalized_url] = score
+
+            logger.debug(f"Found directory page (score {score}, pattern: {matched_pattern}): {normalized_url}")
+
+    # Sort by score (highest first) and return URLs
+    sorted_urls = sorted(directory_urls.items(), key=lambda x: x[1], reverse=True)
+    result = [url for url, score in sorted_urls]
+
+    logger.info(f"Found {len(result)} directory pages (scores: {[s for _, s in sorted_urls[:5]]}...)")
+
+    return result
 
 
 # =============================================================================
@@ -726,21 +1054,25 @@ def extract_contact_from_section(
     # If we have title but no name, or vice versa, we can still proceed
     # but prioritize contacts with both
 
-    # Match title to target roles
+    # Match title to target roles (with intelligent normalization)
     matched_role = None
     title_confidence = 0
     title_match_score = 0
+    all_matches = None
+    normalized_title_obj = None
 
     if title:
-        matched_role, title_confidence, title_match_score = match_title_to_role(
+        matched_role, title_confidence, title_match_score, all_matches, normalized_title_obj = match_title_to_role(
             title,
-            target_roles
+            target_roles,
+            return_all_matches=True  # Capture all matching roles for quality data
         )
 
-    # Skip if title doesn't match our targets
-    if title and not matched_role:
-        logger.debug(f"Skipping contact: title '{title}' doesn't match target roles")
-        return None
+    # DISABLED: Don't strictly filter by title - many valid roles won't match target list
+    # Instead, use title matching for confidence scoring only
+    # if title and not matched_role:
+    #     logger.debug(f"Skipping contact: title '{title}' doesn't match target roles")
+    #     return None
 
     # Calculate confidence score
     confidence = calculate_contact_confidence(
@@ -762,7 +1094,21 @@ def extract_contact_from_section(
     # Parse name
     name_parts = parse_name(name) if name else {'first_name': '', 'last_name': ''}
 
-    # Build contact record
+    # Extract title metadata from normalization (if available)
+    title_normalized = normalized_title_obj.normalized if normalized_title_obj else title
+    title_modifiers = ','.join(normalized_title_obj.modifiers) if normalized_title_obj and normalized_title_obj.modifiers else ''
+    is_temporary = normalized_title_obj.is_temporary if normalized_title_obj else False
+    is_shared_role = normalized_title_obj.is_shared_role if normalized_title_obj else False
+
+    # Format all matched roles (for data quality analysis)
+    all_matched_roles_str = ''
+    if all_matches and len(all_matches) > 1:
+        # Only include secondary matches (exclude the primary match)
+        secondary_matches = [role for role, score in all_matches[1:]]
+        if secondary_matches:
+            all_matched_roles_str = ','.join(secondary_matches)
+
+    # Build contact record (with intelligent title matching metadata)
     contact = {
         'institution_name': institution_name,
         'institution_url': institution_url,
@@ -772,7 +1118,12 @@ def extract_contact_from_section(
         'last_name': name_parts['last_name'],
         'full_name': name or '',
         'title': title or '',
+        'title_normalized': title_normalized or '',
+        'title_modifiers': title_modifiers,
+        'is_temporary': is_temporary,
+        'is_shared_role': is_shared_role,
         'matched_role': matched_role or '',
+        'all_matched_roles': all_matched_roles_str,
         'email': email or '',
         'phone': phone or '',
         'confidence_score': confidence,
@@ -976,6 +1327,168 @@ def scrape_multiple_institutions(
 
 
 # =============================================================================
+# Async / Parallel Scraping (Sprint 2.1)
+# =============================================================================
+
+async def scrape_institution_async(
+    institution_name: str,
+    institution_url: str,
+    state: str,
+    program_type: str,
+    semaphore: asyncio.Semaphore,
+    institution_num: int,
+    total_institutions: int
+) -> pd.DataFrame:
+    """
+    Async wrapper for scraping a single institution.
+
+    Args:
+        institution_name: Name of institution
+        institution_url: URL to scrape
+        state: State abbreviation
+        program_type: Type of program
+        semaphore: Asyncio semaphore for concurrency control
+        institution_num: Current institution number (for logging)
+        total_institutions: Total number of institutions (for logging)
+
+    Returns:
+        DataFrame of contacts
+    """
+    async with semaphore:
+        logger.info(f"[{institution_num}/{total_institutions}] Starting: {institution_name}")
+
+        # Run the synchronous scraping function in executor
+        loop = asyncio.get_event_loop()
+        contacts_df = await loop.run_in_executor(
+            None,  # Use default executor
+            scrape_institution_contacts,
+            institution_name,
+            institution_url,
+            state,
+            program_type
+        )
+
+        if not contacts_df.empty:
+            logger.success(f"[{institution_num}/{total_institutions}] Completed: {institution_name} ({len(contacts_df)} contacts)")
+        else:
+            logger.warning(f"[{institution_num}/{total_institutions}] Completed: {institution_name} (0 contacts)")
+
+        return contacts_df
+
+
+async def scrape_multiple_institutions_async(
+    institutions_df: pd.DataFrame,
+    max_institutions: Optional[int] = None,
+    max_parallel: int = 6
+) -> pd.DataFrame:
+    """
+    Scrape contacts from multiple institutions in parallel using asyncio.
+
+    Args:
+        institutions_df: DataFrame with institution info (from target_discovery)
+        max_institutions: Maximum number of institutions to scrape (None = all)
+        max_parallel: Maximum number of parallel workers (default: 6)
+
+    Returns:
+        Combined DataFrame of all contacts
+    """
+    logger.info("=" * 70)
+    logger.info(f"Starting ASYNC batch scraping of {len(institutions_df)} institutions")
+    logger.info(f"Max parallel workers: {max_parallel}")
+    logger.info("=" * 70)
+
+    # Limit number of institutions if specified
+    if max_institutions:
+        institutions_df = institutions_df.head(max_institutions)
+        logger.info(f"Limited to {max_institutions} institutions for testing")
+
+    # Create semaphore to limit concurrency
+    semaphore = asyncio.Semaphore(max_parallel)
+
+    # Create tasks for all institutions
+    tasks = []
+    for idx, row in institutions_df.iterrows():
+        task = scrape_institution_async(
+            institution_name=row['name'],
+            institution_url=row['url'],
+            state=row['state'],
+            program_type=row['type'],
+            semaphore=semaphore,
+            institution_num=idx + 1,
+            total_institutions=len(institutions_df)
+        )
+        tasks.append(task)
+
+    # Run all tasks concurrently
+    logger.info(f"\nLaunching {len(tasks)} async scraping tasks...")
+    start_time = time.time()
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    elapsed = time.time() - start_time
+    logger.success(f"\nAll tasks completed in {elapsed:.1f} seconds")
+    logger.info(f"Average: {elapsed / len(tasks):.1f}s per institution (with {max_parallel}x parallelization)")
+
+    # Filter out exceptions and combine results
+    all_contacts = []
+    success_count = 0
+    error_count = 0
+
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            logger.error(f"Task {i+1} failed with error: {result}")
+            error_count += 1
+        elif isinstance(result, pd.DataFrame) and not result.empty:
+            all_contacts.append(result)
+            success_count += 1
+
+    logger.info(f"\nResults summary:")
+    logger.info(f"  Successful: {success_count}/{len(tasks)}")
+    logger.info(f"  Failed: {error_count}/{len(tasks)}")
+    logger.info(f"  Empty: {len(tasks) - success_count - error_count}/{len(tasks)}")
+
+    # Combine all results
+    if all_contacts:
+        combined_df = pd.concat(all_contacts, ignore_index=True)
+        logger.success(f"Total contacts extracted: {len(combined_df)}")
+    else:
+        logger.warning("No contacts extracted from any institution")
+        combined_df = pd.DataFrame()
+
+    return combined_df
+
+
+def run_async_scraping(
+    institutions_df: pd.DataFrame,
+    max_institutions: Optional[int] = None,
+    max_parallel: int = 6
+) -> pd.DataFrame:
+    """
+    Synchronous wrapper for async scraping.
+    Use this from non-async code (like main.py).
+
+    Args:
+        institutions_df: DataFrame with institution info
+        max_institutions: Maximum number of institutions to scrape
+        max_parallel: Maximum number of parallel workers
+
+    Returns:
+        Combined DataFrame of all contacts
+    """
+    # Get or create event loop
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    # Run async function
+    return loop.run_until_complete(
+        scrape_multiple_institutions_async(institutions_df, max_institutions, max_parallel)
+    )
+
+
+# =============================================================================
 # Export public API
 # =============================================================================
 
@@ -988,4 +1501,7 @@ __all__ = [
     'extract_contacts_from_page',
     'scrape_institution_contacts',
     'scrape_multiple_institutions',
+    'scrape_institution_async',
+    'scrape_multiple_institutions_async',
+    'run_async_scraping',
 ]

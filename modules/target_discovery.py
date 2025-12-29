@@ -31,12 +31,25 @@ from modules.utils import (
     clean_text,
     get_timestamp,
 )
+from modules.discovery_scrapers.aafpe_scraper import (
+    scrape_aafpe_programs,
+    filter_by_states,
+)
 
 # Initialize logger
 setup_logger("target_discovery")
 
 # User agent for requests
 ua = UserAgent() if USE_RANDOM_USER_AGENT else None
+
+# Import Playwright fetcher for sites that block static requests (403 Forbidden)
+try:
+    from playwright.sync_api import sync_playwright
+    from config.settings import PLAYWRIGHT_TIMEOUT, HEADLESS_BROWSER
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+    logger.warning("Playwright not available for target discovery")
 
 
 def get_user_agent() -> str:
@@ -67,16 +80,65 @@ def fetch_page(url: str, timeout: int = REQUEST_TIMEOUT) -> Optional[BeautifulSo
     }
 
     try:
-        logger.info(f"Fetching: {url}")
+        logger.info(f"Fetching (static): {url}")
         response = requests.get(url, headers=headers, timeout=timeout)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.content, 'html.parser')
-        logger.success(f"Successfully fetched: {url}")
+        logger.success(f"Successfully fetched (static): {url}")
         return soup
 
     except requests.RequestException as e:
         logger.error(f"Failed to fetch {url}: {e}")
+        return None
+
+
+@rate_limit(calls=1, period=RATE_LIMIT_DELAY)
+def fetch_page_with_playwright(url: str) -> Optional[BeautifulSoup]:
+    """
+    Fetch a web page using Playwright (headless browser) to bypass bot detection.
+
+    Use this for sites that return 403 Forbidden on static requests.
+
+    Args:
+        url: URL to fetch
+
+    Returns:
+        BeautifulSoup object or None if failed
+    """
+    if not PLAYWRIGHT_AVAILABLE:
+        logger.error("Playwright not available - cannot fetch dynamic content")
+        return None
+
+    try:
+        logger.info(f"Fetching with Playwright: {url}")
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=HEADLESS_BROWSER)
+            context = browser.new_context(
+                user_agent=get_user_agent(),
+                viewport={'width': 1920, 'height': 1080}
+            )
+            page = context.new_page()
+
+            # Navigate to page with timeout
+            page.goto(url, wait_until='domcontentloaded', timeout=PLAYWRIGHT_TIMEOUT)
+
+            # Wait a bit for JavaScript to render
+            page.wait_for_timeout(2000)
+
+            # Get page content
+            html = page.content()
+
+            # Cleanup
+            browser.close()
+
+            soup = BeautifulSoup(html, 'html.parser')
+            logger.success(f"Successfully fetched with Playwright: {url}")
+            return soup
+
+    except Exception as e:
+        logger.error(f"Playwright fetch failed for {url}: {e}")
         return None
 
 
@@ -107,96 +169,75 @@ def get_aba_law_schools(states: Optional[List[str]] = None) -> pd.DataFrame:
         logger.info(f"Using cached data: {len(cached_data)} law schools")
         return cached_data
 
-    # ABA official list URL
-    aba_url = "https://www.americanbar.org/groups/legal_education/resources/aba_approved_law_schools/"
+    # ABA official list URL - use the alphabetical list page (has all 196 schools)
+    aba_url = "https://www.americanbar.org/groups/legal_education/accreditation/approved-law-schools/alphabetical/"
 
-    soup = fetch_page(aba_url)
+    # The ABA site blocks static requests with 403 Forbidden, so use Playwright directly
+    if not PLAYWRIGHT_AVAILABLE:
+        logger.warning("Playwright not available - cannot scrape ABA website")
+        logger.warning("Creating sample data for testing purposes...")
+        # Fall through to sample data below
+        soup = None
+    else:
+        soup = fetch_page_with_playwright(aba_url)
 
     schools = []
 
     if soup:
-        # The ABA website has a table/list of law schools
-        # Let's try multiple parsing strategies
+        logger.info("Parsing ABA alphabetical school list...")
 
-        # Strategy 1: Look for links containing law school names
-        logger.info("Parsing ABA website for law schools...")
+        # Schools are in <li> elements with pattern: "School Name (Year)"
+        lis = soup.find_all('li')
 
-        # Find all links that might be law schools
-        for link in soup.find_all('a', href=True):
-            text = clean_text(link.get_text())
-            href = link['href']
+        for li in lis:
+            text = li.get_text().strip()
+            # Look for pattern: school name followed by (year)
+            year_match = re.search(r'\((\d{4})\)', text)
+            if year_match:
+                # Extract school name (everything before the year)
+                name_match = re.match(r'(.+?)\s*\(\d{4}\)', text)
+                if name_match:
+                    name = name_match.group(1).strip()
+                    year = year_match.group(1)
 
-            # Skip empty or too short text
-            if len(text) < 5:
-                continue
+                    # Get URL from link within this <li>
+                    link = li.find('a', href=True)
+                    school_url = ''
+                    if link:
+                        href = link['href']
+                        if href.startswith('http'):
+                            school_url = href
+                        elif href.startswith('/'):
+                            school_url = 'https://www.americanbar.org' + href
 
-            # Look for patterns indicating law schools
-            if any(keyword in text.lower() for keyword in [
-                'law school', 'school of law', 'college of law',
-                'law center', 'university', 'college'
-            ]):
-                # Try to extract location info
-                state = None
-                city = None
+                    # Try to infer state from school name
+                    # Many schools are named like: "California - Berkeley", "Arkansas - Little Rock"
+                    state = None
+                    city = None
 
-                # Look for state abbreviations in text or nearby
-                state_pattern = r'\b([A-Z]{2})\b'
-                state_match = re.search(state_pattern, text)
-                if state_match:
-                    state = state_match.group(1)
+                    # Pattern 1: "State - City" format
+                    state_city_match = re.match(r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*-\s*(.+)', name)
+                    if state_city_match:
+                        potential_state = state_city_match.group(1)
+                        potential_city = state_city_match.group(2)
+                        # Check if this looks like a state name (basic heuristic)
+                        if len(potential_state.split()) <= 2:  # "New York", "South Carolina", etc.
+                            state = potential_state
+                            city = potential_city
 
-                # Parse URL to get website
-                school_url = href
-                if not href.startswith('http'):
-                    school_url = urljoin(aba_url, href)
+                    # If no state extracted, leave as None (will need manual mapping or geo lookup)
 
-                school_entry = {
-                    'name': text,
-                    'state': state,
-                    'city': city,
-                    'url': school_url if validate_url(school_url) else '',
-                    'type': 'Law School',
-                    'accreditation_status': 'ABA Approved',
-                }
+                    school_entry = {
+                        'name': name,
+                        'state': state,
+                        'city': city,
+                        'url': school_url if validate_url(school_url) else '',
+                        'type': 'Law School',
+                        'accreditation_status': f'ABA Approved ({year})',
+                    }
+                    schools.append(school_entry)
 
-                schools.append(school_entry)
-
-        # Strategy 2: Look for specific HTML structures (tables, lists)
-        # Check for tables
-        for table in soup.find_all('table'):
-            rows = table.find_all('tr')
-            for row in rows:
-                cells = row.find_all(['td', 'th'])
-                if len(cells) >= 2:
-                    # Look for school name and location
-                    for i, cell in enumerate(cells):
-                        text = clean_text(cell.get_text())
-                        if 'law' in text.lower() and len(text) > 10:
-                            # Potential school found in table
-                            link = cell.find('a', href=True)
-                            school_url = ''
-                            if link:
-                                school_url = link['href']
-                                if not school_url.startswith('http'):
-                                    school_url = urljoin(aba_url, school_url)
-
-                            # Try to find state in adjacent cells
-                            state = None
-                            if i + 1 < len(cells):
-                                next_text = clean_text(cells[i + 1].get_text())
-                                state_match = re.search(r'\b([A-Z]{2})\b', next_text)
-                                if state_match:
-                                    state = state_match.group(1)
-
-                            school_entry = {
-                                'name': text,
-                                'state': state,
-                                'city': None,
-                                'url': school_url if validate_url(school_url) else '',
-                                'type': 'Law School',
-                                'accreditation_status': 'ABA Approved',
-                            }
-                            schools.append(school_entry)
+        logger.success(f"Extracted {len(schools)} schools from ABA alphabetical list")
 
     # Create DataFrame
     df = pd.DataFrame(schools)
@@ -236,8 +277,20 @@ def get_aba_law_schools(states: Optional[List[str]] = None) -> pd.DataFrame:
 
     # Filter by states if provided
     if states:
-        df = df[df['state'].isin(states)]
-        logger.info(f"Filtered to {len(df)} law schools in states: {', '.join(states)}")
+        # NOTE: State filtering only works for 18/197 schools with "State - City" naming
+        # Most schools (Harvard, Yale, Florida, Miami, etc.) have state=None
+        # TODO: Add school name → state mapping for better filtering
+
+        df_filtered = df[df['state'].notna() & df['state'].isin(states)]
+
+        if len(df_filtered) == 0:
+            logger.warning(f"State filtering returned 0 law schools for {', '.join(states)}")
+            logger.warning("Most ABA schools lack state data (only 18/197 have it)")
+            logger.warning("Returning ALL law schools instead - filter manually or use master_institutions.csv")
+            # Don't filter - return all schools
+        else:
+            df = df_filtered
+            logger.info(f"Filtered to {len(df)} law schools in states: {', '.join(states)}")
 
     # Clean up data
     df['name'] = df['name'].apply(clean_text)
@@ -270,66 +323,102 @@ def get_paralegal_programs(states: Optional[List[str]] = None) -> pd.DataFrame:
     logger.info("Starting Paralegal Program Discovery")
     logger.info("=" * 70)
 
-    # Check cache first
-    cache_filename = f"paralegal_programs_{get_timestamp()}.csv"
-    if states:
-        cache_filename = f"paralegal_programs_{'_'.join(sorted(states))}_{get_timestamp()}.csv"
+    # Scrape AAfPE (American Association for Paralegal Education) directory
+    logger.info("Scraping AAfPE paralegal programs directory...")
 
-    cached_data = load_cached_file(cache_filename.replace(get_timestamp(), '*'), CACHE_DIR)
-    if cached_data is not None:
+    try:
+        # Use AAfPE scraper (with caching built-in)
+        df = scrape_aafpe_programs(use_cache=True)
+
+        if df.empty:
+            logger.warning("No programs found from AAfPE scraper")
+            return pd.DataFrame(columns=['name', 'state', 'city', 'url', 'type', 'accreditation_status'])
+
+        # Filter by states if provided
         if states:
-            cached_data = cached_data[cached_data['state'].isin(states)]
-        logger.info(f"Using cached data: {len(cached_data)} paralegal programs")
-        return cached_data
+            df = filter_by_states(df, states)
+            logger.info(f"Filtered to {len(df)} paralegal programs in states: {', '.join(states)}")
 
-    # AAfPE (American Association for Paralegal Education) directory
-    aafpe_url = "https://www.aafpe.org/"
+        # Transform columns to match expected output format
+        # AAfPE scraper provides: name, url, state, program_type
+        # Expected format: name, state, city, url, type, accreditation_status
 
-    logger.info("Searching for paralegal programs...")
-    logger.warning("Note: Full implementation requires detailed scraping of AAfPE and state systems")
-    logger.info("Creating sample dataset for testing purposes...")
+        # Add missing columns
+        df['city'] = ''  # City not available from AAfPE directory
+        df['type'] = 'Paralegal Program'  # All are paralegal programs
+        df['accreditation_status'] = 'AAfPE Member'  # All are AAfPE members
 
-    # Sample paralegal programs for testing
-    sample_programs = [
-        {'name': 'UCLA Extension Paralegal Program', 'state': 'CA', 'city': 'Los Angeles',
-         'url': 'https://www.uclaextension.edu/law', 'type': 'Paralegal Program', 'accreditation_status': 'AAfPE Approved'},
-        {'name': 'UC Berkeley Extension Paralegal Program', 'state': 'CA', 'city': 'Berkeley',
-         'url': 'https://extension.berkeley.edu/programs/paralegal', 'type': 'Paralegal Program', 'accreditation_status': 'AAfPE Approved'},
-        {'name': 'De Anza College Paralegal Studies', 'state': 'CA', 'city': 'Cupertino',
-         'url': 'https://www.deanza.edu/paralegal/', 'type': 'Paralegal Program', 'accreditation_status': 'AAfPE Approved'},
-        {'name': 'City College of San Francisco Paralegal Studies', 'state': 'CA', 'city': 'San Francisco',
-         'url': 'https://www.ccsf.edu/paralegal', 'type': 'Paralegal Program', 'accreditation_status': 'State Approved'},
-        {'name': 'NYU School of Professional Studies Paralegal', 'state': 'NY', 'city': 'New York',
-         'url': 'https://www.sps.nyu.edu/paralegal', 'type': 'Paralegal Program', 'accreditation_status': 'AAfPE Approved'},
-        {'name': 'Pace University Paralegal Studies', 'state': 'NY', 'city': 'New York',
-         'url': 'https://www.pace.edu/paralegal', 'type': 'Paralegal Program', 'accreditation_status': 'AAfPE Approved'},
-        {'name': 'Adelphi University Paralegal Studies', 'state': 'NY', 'city': 'Garden City',
-         'url': 'https://academics.adelphi.edu/paralegal/', 'type': 'Paralegal Program', 'accreditation_status': 'AAfPE Approved'},
-        {'name': 'University of Texas at Arlington Paralegal', 'state': 'TX', 'city': 'Arlington',
-         'url': 'https://www.uta.edu/academics/paralegal', 'type': 'Paralegal Program', 'accreditation_status': 'AAfPE Approved'},
-        {'name': 'Houston Community College Paralegal', 'state': 'TX', 'city': 'Houston',
-         'url': 'https://www.hccs.edu/programs/paralegal/', 'type': 'Paralegal Program', 'accreditation_status': 'State Approved'},
-        {'name': 'Lone Star College Paralegal Technology', 'state': 'TX', 'city': 'The Woodlands',
-         'url': 'https://www.lonestar.edu/paralegal', 'type': 'Paralegal Program', 'accreditation_status': 'State Approved'},
-    ]
+        # Reorder columns to match expected format
+        df = df[['name', 'state', 'city', 'url', 'type', 'accreditation_status']]
 
-    df = pd.DataFrame(sample_programs)
-
-    # Filter by states if provided
-    if states:
-        df = df[df['state'].isin(states)]
-        logger.info(f"Filtered to {len(df)} paralegal programs in states: {', '.join(states)}")
+    except Exception as e:
+        logger.error(f"Failed to scrape AAfPE programs: {e}")
+        logger.info("Falling back to empty dataset")
+        return pd.DataFrame(columns=['name', 'state', 'city', 'url', 'type', 'accreditation_status'])
 
     # Sort by state and name
     df = df.sort_values(['state', 'name']).reset_index(drop=True)
 
     logger.success(f"Found {len(df)} paralegal programs")
-
-    # Cache results
-    if not df.empty:
-        cache_to_file(df, cache_filename, CACHE_DIR)
-
     logger.info("=" * 70)
+    return df
+
+
+def load_master_institutions(states: Optional[List[str]] = None, program_type: str = 'both') -> pd.DataFrame:
+    """
+    Load institutions from master_institutions.csv database.
+
+    This is FASTER and MORE RELIABLE than scraping ABA/AAfPE each time.
+
+    Args:
+        states: List of state names or abbreviations (e.g., ['FL', 'Florida', 'CA'])
+        program_type: 'law', 'paralegal', or 'both'
+
+    Returns:
+        DataFrame with columns matching get_all_targets() output
+    """
+    from pathlib import Path
+
+    master_file = Path('data/master_institutions.csv')
+
+    if not master_file.exists():
+        logger.error(f"Master database not found: {master_file}")
+        logger.error("Run: python build_master_database.py")
+        return pd.DataFrame()
+
+    # Load CSV
+    df = pd.read_csv(master_file)
+    logger.info(f"Loaded {len(df)} institutions from master database")
+
+    # Filter by program type
+    if program_type == 'law':
+        df = df[df['source'] == 'ABA']
+    elif program_type == 'paralegal':
+        df = df[df['source'] == 'AAfPE']
+    # else 'both' - keep all
+
+    # Filter by state (using name-based matching for law schools)
+    if states:
+        state_filters = [s.lower() for s in states]
+
+        def matches_state(row):
+            # Check explicit state field
+            if pd.notna(row['state']) and row['state'].lower() in state_filters:
+                return True
+
+            # For law schools without state data, infer from name
+            name_lower = str(row['name']).lower()
+            for state in state_filters:
+                if state in name_lower:
+                    return True
+
+            return False
+
+        df_filtered = df[df.apply(matches_state, axis=1)]
+
+        logger.info(f"Filtered to {len(df_filtered)} institutions matching states: {', '.join(states)}")
+        df = df_filtered
+
     return df
 
 
@@ -337,8 +426,10 @@ def get_all_targets(states: Optional[List[str]] = None, program_type: str = 'bot
     """
     Get all target institutions (law schools and/or paralegal programs).
 
+    NOW USES master_institutions.csv for better performance and reliability.
+
     Args:
-        states: List of state abbreviations. None = all states
+        states: List of state names or abbreviations (e.g., ['FL', 'Florida', 'CA'])
         program_type: 'law', 'paralegal', or 'both'
 
     Returns:
@@ -349,6 +440,16 @@ def get_all_targets(states: Optional[List[str]] = None, program_type: str = 'bot
         logger.info(f"States: {', '.join(states)}")
     else:
         logger.info("States: ALL")
+
+    # Try to load from master database first
+    df = load_master_institutions(states, program_type)
+
+    if not df.empty:
+        logger.success(f"Total targets discovered: {len(df)}")
+        return df
+
+    # Fallback to old scraping method if master DB doesn't exist
+    logger.warning("Master database not found, falling back to live scraping...")
 
     dfs = []
 
