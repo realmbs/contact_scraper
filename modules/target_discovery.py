@@ -397,26 +397,20 @@ def load_master_institutions(states: Optional[List[str]] = None, program_type: s
         df = df[df['source'] == 'AAfPE']
     # else 'both' - keep all
 
-    # Filter by state (using name-based matching for law schools)
+    # Filter by state (now using direct state column match - 100% coverage after enrichment)
     if states:
-        state_filters = [s.lower() for s in states]
+        # Normalize state filters to uppercase (state column is uppercase: CA, NY, TX, etc.)
+        state_filters = [s.upper() for s in states]
 
-        def matches_state(row):
-            # Check explicit state field
-            if pd.notna(row['state']) and row['state'].lower() in state_filters:
-                return True
+        # Direct state column filtering (works for all institutions now)
+        df_filtered = df[df['state'].isin(state_filters)]
 
-            # For law schools without state data, infer from name
-            name_lower = str(row['name']).lower()
-            for state in state_filters:
-                if state in name_lower:
-                    return True
+        if len(df_filtered) == 0:
+            logger.warning(f"No institutions found for states: {', '.join(states)}")
+            logger.warning("Available states: " + ", ".join(df['state'].unique()[:20]))
+        else:
+            logger.info(f"Filtered to {len(df_filtered)} institutions matching states: {', '.join(states)}")
 
-            return False
-
-        df_filtered = df[df.apply(matches_state, axis=1)]
-
-        logger.info(f"Filtered to {len(df_filtered)} institutions matching states: {', '.join(states)}")
         df = df_filtered
 
     return df

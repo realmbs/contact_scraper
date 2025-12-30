@@ -101,6 +101,18 @@ if SAVE_SCREENSHOTS:
 # Concurrent requests
 MAX_CONCURRENT_REQUESTS = _get_int('MAX_CONCURRENT_REQUESTS', 5)
 
+# Async profile link visiting (Performance Optimization - Phase 6.1)
+ENABLE_ASYNC_PROFILE_LINKS = _get_bool('ENABLE_ASYNC_PROFILE_LINKS', True)  # Enable by default
+PROFILE_LINK_CONCURRENCY = _get_int('PROFILE_LINK_CONCURRENCY', 3)  # 3 concurrent profile fetches
+
+# Async directory page processing (Performance Optimization - Phase 6.2)
+ENABLE_ASYNC_DIRECTORIES = _get_bool('ENABLE_ASYNC_DIRECTORIES', True)  # Enable by default
+DIRECTORY_CONCURRENCY = _get_int('DIRECTORY_CONCURRENCY', 3)  # 3 concurrent directory fetches
+
+# Browser pooling (Performance Optimization - Phase 6.3)
+ENABLE_BROWSER_POOL = _get_bool('ENABLE_BROWSER_POOL', True)  # Enable by default
+BROWSER_POOL_SIZE = _get_int('BROWSER_POOL_SIZE', 3)  # 3 persistent browser instances
+
 # Timeouts
 REQUEST_TIMEOUT = _get_int('REQUEST_TIMEOUT', 30)
 

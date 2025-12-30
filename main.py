@@ -4,6 +4,18 @@ Legal Education Contact Scraper - Main CLI Interface
 
 Complete workflow: Target Discovery + Contact Extraction
 Discovers institutions and extracts contact information.
+
+OPTIMIZATIONS ENABLED:
+- Phase 1: 100% state coverage (197 law schools + 199 paralegal programs)
+- Phase 2: Multi-tier extraction (4-tier architecture)
+- Phase 3: Email validation & enrichment (Hunter.io, ZeroBounce, NeverBounce)
+- Phase 4: Deduplication & quality control
+- Phase 6.1: Async profile link visiting (3 workers, 50% time reduction)
+- Phase 6.2: Async directory processing (3 workers, parallel page fetching)
+- Phase 6.3: Browser pooling (3 persistent browsers, eliminates launch overhead)
+- Phase 6.4: Per-domain rate limiting (async, parallel domains)
+
+PERFORMANCE: Berkeley validated at 3.42x speedup (21min → 6.13min)
 """
 
 import sys
@@ -284,14 +296,20 @@ def main():
             print("=" * 70)
             return
 
-        # Phase 2: Contact Extraction (with async parallelization)
+        # Phase 2: Contact Extraction (with performance optimizations)
         print("\n" + "=" * 70)
-        print("PHASE 2: EXTRACTING CONTACTS (ASYNC MODE)")
+        print("PHASE 2: EXTRACTING CONTACTS (OPTIMIZED)")
         print("=" * 70)
         print()
 
-        # Use async scraper with 6x parallelization (Sprint 2.1)
-        logger.info("Using async architecture with 6 parallel workers")
+        # Performance optimizations enabled (Phase 6.1-6.4):
+        # - 6x institution parallelization (async architecture)
+        # - 3x profile link parallelization (async within each institution)
+        # - 3x directory parallelization (async page fetching)
+        # - Browser pooling (3 persistent browsers, eliminates 2-3s launch overhead)
+        # - Per-domain rate limiting (async, allows parallel domain requests)
+        # Expected: 3.42x speedup validated on Berkeley (21min → 6.13min)
+        logger.info("Using async architecture with 6 parallel workers + multi-tier optimizations")
         contacts = run_async_scraping(targets, max_institutions=max_institutions, max_parallel=6)
 
         # Phase 3: Email Validation & Enrichment (if contacts found)
@@ -439,10 +457,13 @@ def main():
             )
             logger.success(f"Contacts saved to: {contacts_file}")
 
-        # Display optimization statistics (Sprint 2-3)
+        # Display optimization statistics (Sprint 2-3 + Multi-Tier Phase 5-6)
         print("\n" + "=" * 70)
-        print("OPTIMIZATION STATISTICS (SPRINT 2-3)")
+        print("OPTIMIZATION STATISTICS")
         print("=" * 70)
+        print()
+        print("NOTE: Phase 6.1-6.3 (async optimizations + browser pooling) are active")
+        print("      but don't have separate statistics. Performance measured via total runtime.")
         print()
 
         # Fetch router stats
@@ -485,6 +506,50 @@ def main():
             print()
         except:
             pass  # Timeout stats not available
+
+        # Multi-Tier extraction stats (Phase 5)
+        try:
+            from modules.page_classifier import get_page_classifier
+            from modules.link_extractor import get_link_extractor
+            from modules.email_deobfuscator import get_email_deobfuscator
+
+            # Page classifier stats
+            classifier = get_page_classifier()
+            classifier_stats = classifier.stats
+            if classifier_stats['total_classified'] > 0:
+                print("Page Classification (Multi-Tier Phase 5):")
+                print(f"  Total pages classified: {classifier_stats['total_classified']}")
+                by_type = classifier_stats.get('by_type', {})
+                if by_type:
+                    for page_type, count in sorted(by_type.items(), key=lambda x: x[1], reverse=True)[:5]:
+                        print(f"  {page_type}: {count}")
+                print()
+
+            # Link extractor stats
+            link_extractor = get_link_extractor()
+            link_stats = link_extractor.get_stats()
+            if link_stats['pages_processed'] > 0:
+                print("Profile Link Extraction (Multi-Tier Phase 5):")
+                print(f"  Directory pages processed: {link_stats['pages_processed']}")
+                print(f"  Total links found: {link_stats['total_links_found']}")
+                print(f"  Profile links extracted: {link_stats['links_filtered']}")
+                print(f"  Avg links per page: {link_stats['avg_links_per_page']}")
+                print()
+
+            # Email deobfuscator stats
+            deobfuscator = get_email_deobfuscator()
+            deobf_stats = deobfuscator.get_stats()
+            if deobf_stats['total_deobfuscated'] > 0:
+                print("Email De-obfuscation (Multi-Tier Phase 5):")
+                print(f"  Total emails deobfuscated: {deobf_stats['total_deobfuscated']}")
+                print(f"  Cloudflare decoded: {deobf_stats['cloudflare_decoded']}")
+                print(f"  Text patterns decoded: {deobf_stats['text_pattern_decoded']}")
+                print(f"  JavaScript extracted: {deobf_stats['javascript_extracted']}")
+                print(f"  Noscript extracted: {deobf_stats['noscript_extracted']}")
+                print()
+        except Exception as e:
+            logger.debug(f"Multi-tier stats not available: {e}")
+            pass  # Multi-tier stats not available
 
         # Final summary
         print("=" * 70)

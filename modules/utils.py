@@ -6,6 +6,7 @@ Provides logging setup, caching, rate limiting, and common helper functions.
 
 import time
 import re
+import sys
 from pathlib import Path
 from functools import wraps
 from datetime import datetime, timedelta
@@ -45,12 +46,15 @@ def setup_logger(name: str = "scraper", log_file: Optional[str] = None) -> logge
     # Remove default logger
     logger.remove()
 
-    # Console handler with colored output
+    # Console handler with colored output (only colorize if stdout is a TTY)
+    # This prevents ANSI escape codes from polluting piped output (e.g., tee, redirects)
+    is_tty = sys.stdout.isatty()
+
     logger.add(
         sink=lambda msg: print(msg, end=''),
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
         level=LOG_LEVEL,
-        colorize=True,
+        colorize=is_tty,  # Only colorize for interactive terminals
     )
 
     # File handler with rotation

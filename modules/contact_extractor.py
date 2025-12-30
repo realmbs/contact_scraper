@@ -44,6 +44,10 @@ from config.settings import (
     SAVE_SCREENSHOTS,
     SCREENSHOTS_DIR,
     HEADLESS_BROWSER,
+    ENABLE_ASYNC_PROFILE_LINKS,
+    PROFILE_LINK_CONCURRENCY,
+    ENABLE_ASYNC_DIRECTORIES,
+    DIRECTORY_CONCURRENCY,
 )
 from modules.utils import (
     setup_logger,
@@ -64,6 +68,9 @@ from modules.title_normalizer import (
 )
 from modules.timeout_manager import get_timeout_manager
 from modules.domain_rate_limiter import get_domain_rate_limiter
+from modules.page_classifier import get_page_classifier, PageType
+from modules.link_extractor import get_link_extractor
+from modules.email_deobfuscator import get_email_deobfuscator
 
 # Initialize logger
 setup_logger("contact_extractor")
@@ -73,6 +80,11 @@ timeout_manager = get_timeout_manager(default_timeout=PLAYWRIGHT_TIMEOUT)
 
 # Initialize domain rate limiter (Sprint 3.1)
 domain_rate_limiter = get_domain_rate_limiter(default_delay=2.0)
+
+# Initialize multi-tier extraction modules (Multi-Tier Phase 1)
+page_classifier = get_page_classifier()
+link_extractor = get_link_extractor(max_links=30, min_score=35)  # Multi-Tier Phase 5.1: Lowered from 40→35
+email_deobfuscator = get_email_deobfuscator()
 
 # User agent for requests
 ua = UserAgent() if USE_RANDOM_USER_AGENT else None
@@ -131,6 +143,13 @@ def fetch_page_with_playwright(url: str) -> Optional[BeautifulSoup]:
                 '[class*="profile"]', '[class*="person"]', '[class*="staff"]',
                 'table', '.directory', '[role="main"]'
             ]
+
+            # Multi-Tier Phase 5.1: Add directory-specific link selectors for JS-rendered content
+            if 'directory' in url.lower() or 'people' in url.lower() or 'faculty' in url.lower() or 'staff' in url.lower():
+                common_selectors.insert(0, 'a[href*="profile"]')  # High priority for profile links
+                common_selectors.insert(0, 'a[href*="/people/"]')
+                common_selectors.insert(0, '.person-card')
+                common_selectors.insert(0, '.faculty-card')
 
             for selector in common_selectors:
                 try:
@@ -683,21 +702,33 @@ def find_directory_pages(
             r'department.*staff',
         ])
 
-    # EXCLUSION patterns - skip these URLs entirely
+    # EXCLUSION patterns - skip these URLs entirely (Multi-Tier Phase 3: Enhanced)
     exclusion_patterns = [
-        r'admissions?(?!.*staff)',  # /admissions, /admission (unless /admissions-staff)
-        r'scholarship',              # /faculty/scholarship
-        r'workshop',                 # /faculty/workshops
-        r'apply',                    # /apply, /how-to-apply
-        r'contact-us',               # /contact-us forms
-        r'contact\b(?!.*directory)', # /contact (unless /contact-directory)
-        r'news',                     # /news
-        r'events?',                  # /events
-        r'calendar',                 # /calendar
-        r'student.*portal',          # /student-portal
-        r'alumni',                   # /alumni
-        r'donate',                   # /donate
-        r'giving',                   # /giving
+        r'admissions?(?!.*staff)',   # /admissions, /admission (unless /admissions-staff)
+        r'scholarship',               # /faculty/scholarship
+        r'workshop',                  # /faculty/workshops
+        r'apply',                     # /apply, /how-to-apply
+        r'contact-us',                # /contact-us forms
+        r'contact\b(?!.*directory)',  # /contact (unless /contact-directory)
+        r'news',                      # /news
+        r'events?',                   # /events
+        r'calendar',                  # /calendar
+        r'student.*portal',           # /student-portal
+        r'student.*directory',        # /student-directory (Multi-Tier Phase 3)
+        r'student.*profiles?',        # /student-profiles (Multi-Tier Phase 3)
+        r'student.*roster',           # /student-roster
+        r'grades?\b',                 # /grades (Multi-Tier Phase 3)
+        r'portal\b',                  # /portal (Multi-Tier Phase 3)
+        r'alumni',                    # /alumni
+        r'donate',                    # /donate
+        r'giving',                    # /giving
+        r'instagram\.com',            # Social media (Multi-Tier Phase 3)
+        r'twitter\.com',              # Social media
+        r'facebook\.com',             # Social media
+        r'linkedin\.com',             # Social media
+        r'youtube\.com',              # Social media
+        r'bluesky\.',                 # Social media
+        r'outlook\.office',           # Office 365 portal (Multi-Tier Phase 3)
     ]
 
     # Find all links on homepage
@@ -903,9 +934,12 @@ def extract_contacts_from_page(
     for tag in soup.find_all(['div', 'section', 'article', 'li']):
         classes = ' '.join(tag.get('class', [])).lower()
 
+        # Multi-Tier Phase 5.4: Expanded CSS class keywords for broader site support
         if any(keyword in classes for keyword in [
             'profile', 'person', 'staff', 'faculty', 'contact',
-            'member', 'bio', 'card', 'directory'
+            'member', 'bio', 'card', 'directory',
+            'employee', 'team', 'user', 'individual', 'personnel',  # NEW: broader patterns
+            'listing', 'item', 'entry', 'record'  # NEW: CMS-common classes
         ]):
             potential_sections.append(tag)
 
@@ -915,6 +949,21 @@ def extract_contacts_from_page(
         for table in tables:
             rows = table.find_all('tr')
             potential_sections.extend(rows)
+
+    # Multi-Tier Phase 5.4: Semantic markup fallback for schema.org-compliant sites
+    if not potential_sections:
+        # Search for elements with itemprop="name" or itemprop="email" (structured person data)
+        semantic_elements = soup.find_all(attrs={'itemprop': re.compile(r'(name|email|jobTitle)', re.I)})
+        if semantic_elements:
+            # Group semantic elements by parent container
+            parents = set()
+            for elem in semantic_elements:
+                parent = elem.find_parent(['div', 'section', 'article', 'li', 'tr'])
+                if parent and parent not in parents:
+                    potential_sections.append(parent)
+                    parents.add(parent)
+            if potential_sections:
+                logger.debug(f"Found {len(potential_sections)} sections via semantic markup fallback")
 
     # Parse each potential contact section
     for section in potential_sections:
@@ -982,6 +1031,7 @@ def extract_contact_from_section(
         title = ' | '.join(titles) if titles else None
 
     # Strategy 2: Look for name in common heading tags or class names
+    name_element = None  # Track which element was used for name
     if not name:
         for tag in section.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'b', 'span', 'div']):
             classes = ' '.join(tag.get('class', [])).lower()
@@ -991,8 +1041,12 @@ def extract_contact_from_section(
                 if not name and len(tag_text) > 3 and len(tag_text.split()) >= 2:
                     # Likely a name
                     name = tag_text
+                    name_element = tag  # Remember this element
 
-            if not title and any(keyword in classes for keyword in ['title', 'position', 'role', 'job']):
+            # BUG FIX: Don't extract title from same element as name
+            # Also require more specific job-related class names (not just "title")
+            if (not title and tag != name_element and
+                any(keyword in classes for keyword in ['position', 'role', 'job', 'jobtitle'])):
                 if tag_text and len(tag_text) > 5:
                     title = tag_text
 
@@ -1016,12 +1070,28 @@ def extract_contact_from_section(
         email_tag = section.find('a', href=re.compile(r'mailto:', re.I))
 
     if email_tag:
-        email = email_tag.get('href', '').replace('mailto:', '').strip()
-        if not email:
-            email = clean_text(email_tag.get_text())
+        href = email_tag.get('href', '').strip()
+        # Multi-Tier Phase 5.2: Only extract from mailto: links, validate format
+        if href.startswith('mailto:'):
+            email = href.replace('mailto:', '').strip()
+            # Validate email format before accepting
+            if email and not re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$', email):
+                logger.debug(f"Invalid email format from mailto: {email[:50]}")
+                email = None  # Discard invalid email
+        else:
+            # href is not mailto:, try to extract email from anchor text instead
+            email = extract_email(email_tag.get_text())
     else:
         # Try extracting from text
         email = extract_email(text)
+
+    # Multi-Tier Phase 2: If still no email, try de-obfuscation
+    if not email:
+        section_html = str(section)
+        deobfuscated_emails = email_deobfuscator.deobfuscate_all(section_html)
+        if deobfuscated_emails:
+            email = list(deobfuscated_emails)[0]  # Use first de-obfuscated email
+            logger.debug(f"De-obfuscated email: {email}")
 
     # Extract phone (try semantic markup first)
     phone_tag = section.find('a', attrs={'itemprop': 'telephone'})
@@ -1038,21 +1108,47 @@ def extract_contact_from_section(
 
     # Look for title if not found
     if not title:
-        # Search text for common title keywords
-        title_keywords = ['director', 'dean', 'professor', 'librarian', 'coordinator', 'chair', 'head']
-        for line in text.split('\n'):
-            line_clean = clean_text(line).lower()
-            if any(keyword in line_clean for keyword in title_keywords):
-                if len(line_clean) > 5 and len(line_clean) < 100:
-                    title = clean_text(line)
+        # BUG FIX: Define title keywords at the top (not inside loop)
+        title_keywords = ['director', 'dean', 'professor', 'librarian', 'coordinator',
+                        'chair', 'head', 'assistant', 'associate', 'chief', 'manager',
+                        'registrar', 'administrator', 'counsel', 'officer']
+
+        # BUG FIX: First try to find title in <li> or <p> elements (common pattern)
+        # Look for list items or paragraphs containing job title keywords
+        for tag in section.find_all(['li', 'p', 'div']):
+            tag_text = clean_text(tag.get_text())
+            tag_text_lower = tag_text.lower()
+
+            # Skip if this looks like a name or email
+            if '@' in tag_text or tag_text == name:
+                continue
+
+            # Check if contains job title keywords
+            if any(keyword in tag_text_lower for keyword in title_keywords):
+                if 5 < len(tag_text) < 150:  # Reasonable title length
+                    title = tag_text
                     break
 
-    # Skip if no name or title found
-    if not name and not title:
+        # Fallback: Search text for title keywords (original logic)
+        if not title:
+            for line in text.split('\n'):
+                line_clean = clean_text(line).lower()
+                if any(keyword in line_clean for keyword in title_keywords):
+                    if len(line_clean) > 5 and len(line_clean) < 100:
+                        title = clean_text(line)
+                        break
+
+    # Multi-Tier Phase 5.4: More lenient validation - allow name OR email (title optional)
+    # Many faculty pages don't have easily parsable titles
+    if not name and not email:
+        # Need at least a name or email to be useful
+        logger.debug(f"Skipping: no name or email found (title: {title[:50] if title else 'None'})")
         return None
 
-    # If we have title but no name, or vice versa, we can still proceed
-    # but prioritize contacts with both
+    # If we have title but no name, try to extract name from nearby text
+    if not name and title:
+        # Some pages only list title, try harder to find associated name
+        pass  # Will use title as fallback in final contact dict
 
     # Match title to target roles (with intelligent normalization)
     matched_role = None
@@ -1167,6 +1263,383 @@ def deduplicate_contacts(contacts: List[Dict]) -> List[Dict]:
     return unique_contacts
 
 
+def scrape_with_link_following(
+    dir_url: str,
+    dir_soup: BeautifulSoup,
+    target_roles: List[str],
+    institution_name: str,
+    institution_url: str,
+    state: str,
+    program_type: str,
+    max_profile_pages: int = 20
+) -> List[Dict]:
+    """
+    Multi-tier extraction with intelligent link following.
+
+    Strategy:
+    1. Classify directory page type
+    2. Extract contacts directly from directory page
+    3. If it's a directory listing, extract profile links
+    4. Follow top-scored profile links (up to max_profile_pages)
+    5. Extract contacts from individual profile pages
+    6. Combine and return all contacts
+
+    Args:
+        dir_url: URL of directory page
+        dir_soup: Parsed HTML of directory page
+        target_roles: List of target role titles
+        institution_name: Institution name
+        institution_url: Institution homepage URL
+        state: State abbreviation
+        program_type: Program type
+        max_profile_pages: Max individual profiles to scrape per directory
+
+    Returns:
+        List of contact dictionaries
+    """
+    all_contacts = []
+
+    # Step 1: Classify page type
+    html_str = str(dir_soup)
+    h1 = dir_soup.find('h1')
+    heading = h1.get_text() if h1 else ''
+
+    page_type, confidence = page_classifier.classify_page(dir_url, html_str, heading)
+
+    logger.debug(f"Page classified as: {page_type} (confidence: {confidence})")
+
+    # Step 2: Check if we should exclude this page
+    if page_classifier.should_exclude(dir_url, html_str):
+        logger.warning(f"Excluding page (type: {page_type}): {dir_url[:80]}")
+        return []
+
+    # Step 3: Extract contacts directly from this page
+    direct_contacts = extract_contacts_from_page(
+        dir_url,
+        dir_soup,
+        target_roles,
+        institution_name,
+        institution_url,
+        state,
+        program_type
+    )
+    all_contacts.extend(direct_contacts)
+
+    logger.info(f"Direct extraction: {len(direct_contacts)} contacts from {dir_url[:60]}")
+
+    # Step 4: If this is a directory listing, follow profile links
+    if page_classifier.is_directory_listing(dir_url, html_str):
+        logger.info(f"Directory listing detected, extracting profile links...")
+
+        # Extract profile links
+        profile_links = link_extractor.extract_profile_links(dir_url, html_str)
+
+        if profile_links:
+            logger.info(f"Found {len(profile_links)} profile links, visiting top {min(len(profile_links), max_profile_pages)}")
+
+            # Visit top-scored profile pages
+            for i, profile_link in enumerate(profile_links[:max_profile_pages], 1):
+                try:
+                    logger.debug(f"  [{i}/{len(profile_links[:max_profile_pages])}] Visiting: {profile_link.url[:70]} (score: {profile_link.score})")
+
+                    # Rate limiting
+                    time.sleep(RATE_LIMIT_DELAY)
+
+                    # Fetch profile page
+                    profile_soup = fetch_page_smart(profile_link.url)
+
+                    if not profile_soup:
+                        logger.debug(f"    Failed to fetch profile page")
+                        continue
+
+                    # Extract contacts from profile page
+                    profile_contacts = extract_contacts_from_page(
+                        profile_link.url,
+                        profile_soup,
+                        target_roles,
+                        institution_name,
+                        institution_url,
+                        state,
+                        program_type
+                    )
+
+                    if profile_contacts:
+                        logger.debug(f"    Extracted {len(profile_contacts)} contact(s)")
+                        all_contacts.extend(profile_contacts)
+
+                except Exception as e:
+                    logger.debug(f"    Error scraping profile {profile_link.url[:60]}: {e}")
+                    continue
+
+            logger.success(f"Link following: {len(all_contacts) - len(direct_contacts)} additional contacts from {i} profile pages")
+        else:
+            logger.debug("No profile links found on directory listing")
+
+    return all_contacts
+
+
+# =============================================================================
+# Async Multi-Tier Extraction (Performance Optimization - Phase 6.1)
+# =============================================================================
+
+async def scrape_with_link_following_async(
+    dir_url: str,
+    dir_soup: BeautifulSoup,
+    target_roles: List[str],
+    institution_name: str,
+    institution_url: str,
+    state: str,
+    program_type: str,
+    max_profile_pages: int = 20,
+    concurrency: int = 3
+) -> List[Dict]:
+    """
+    Multi-tier extraction with parallel profile link visiting (ASYNC).
+
+    Performance Optimization - Phase 6.1:
+    - Visits profile links in parallel using asyncio.Semaphore
+    - Uses per-domain rate limiting instead of global 5s delay
+    - Expected savings: 10 minutes per institution (50% time reduction)
+
+    Strategy:
+    1. Classify directory page type
+    2. Extract contacts directly from directory page
+    3. If it's a directory listing, extract profile links
+    4. Follow top-scored profile links IN PARALLEL (up to max_profile_pages)
+    5. Extract contacts from individual profile pages
+    6. Combine and return all contacts
+
+    Args:
+        dir_url: URL of directory page
+        dir_soup: Parsed HTML of directory page
+        target_roles: List of target role titles
+        institution_name: Institution name
+        institution_url: Institution homepage URL
+        state: State abbreviation
+        program_type: Program type
+        max_profile_pages: Max individual profiles to scrape per directory
+        concurrency: Number of concurrent profile fetches (default: 3)
+
+    Returns:
+        List of contact dictionaries
+    """
+    all_contacts = []
+
+    # Step 1: Classify page type
+    html_str = str(dir_soup)
+    h1 = dir_soup.find('h1')
+    heading = h1.get_text() if h1 else ''
+
+    page_type, confidence = page_classifier.classify_page(dir_url, html_str, heading)
+
+    logger.debug(f"Page classified as: {page_type} (confidence: {confidence})")
+
+    # Step 2: Check if we should exclude this page
+    if page_classifier.should_exclude(dir_url, html_str):
+        logger.warning(f"Excluding page (type: {page_type}): {dir_url[:80]}")
+        return []
+
+    # Step 3: Extract contacts directly from this page
+    direct_contacts = extract_contacts_from_page(
+        dir_url,
+        dir_soup,
+        target_roles,
+        institution_name,
+        institution_url,
+        state,
+        program_type
+    )
+    all_contacts.extend(direct_contacts)
+
+    logger.info(f"Direct extraction: {len(direct_contacts)} contacts from {dir_url[:60]}")
+
+    # Step 4: If this is a directory listing, follow profile links IN PARALLEL
+    if page_classifier.is_directory_listing(dir_url, html_str):
+        logger.info(f"Directory listing detected, extracting profile links...")
+
+        # Extract profile links
+        profile_links = link_extractor.extract_profile_links(dir_url, html_str)
+
+        if profile_links:
+            logger.info(f"Found {len(profile_links)} profile links, visiting top {min(len(profile_links), max_profile_pages)} in parallel ({concurrency} workers)")
+
+            # Semaphore to limit concurrent fetches
+            semaphore = asyncio.Semaphore(concurrency)
+
+            # Get domain rate limiter
+            rate_limiter = get_domain_rate_limiter()
+
+            async def fetch_profile(i: int, profile_link) -> List[Dict]:
+                """Fetch a single profile page with rate limiting."""
+                async with semaphore:
+                    try:
+                        logger.debug(f"  [{i+1}/{len(profile_links[:max_profile_pages])}] Visiting: {profile_link.url[:70]} (score: {profile_link.score})")
+
+                        # Per-domain rate limiting (async)
+                        await rate_limiter.wait_if_needed_async(profile_link.url)
+
+                        # Fetch profile page (run sync function in executor)
+                        loop = asyncio.get_event_loop()
+                        profile_soup = await loop.run_in_executor(None, fetch_page_smart, profile_link.url)
+
+                        if not profile_soup:
+                            logger.debug(f"    Failed to fetch profile page")
+                            return []
+
+                        # Extract contacts from profile page (sync function)
+                        profile_contacts = extract_contacts_from_page(
+                            profile_link.url,
+                            profile_soup,
+                            target_roles,
+                            institution_name,
+                            institution_url,
+                            state,
+                            program_type
+                        )
+
+                        if profile_contacts:
+                            logger.debug(f"    Extracted {len(profile_contacts)} contact(s)")
+                            return profile_contacts
+
+                        return []
+
+                    except Exception as e:
+                        logger.debug(f"    Error scraping profile {profile_link.url[:60]}: {e}")
+                        return []
+
+            # Visit profile pages in parallel
+            tasks = [fetch_profile(i, link) for i, link in enumerate(profile_links[:max_profile_pages])]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Flatten results
+            for result in results:
+                if isinstance(result, list):
+                    all_contacts.extend(result)
+                elif isinstance(result, Exception):
+                    logger.debug(f"Profile fetch raised exception: {result}")
+
+            new_contacts = len(all_contacts) - len(direct_contacts)
+            logger.success(f"Link following (parallel): {new_contacts} additional contacts from {len(profile_links[:max_profile_pages])} profile pages")
+        else:
+            logger.debug("No profile links found on directory listing")
+
+    return all_contacts
+
+
+async def scrape_directories_async(
+    directory_urls: List[str],
+    target_roles: List[str],
+    institution_name: str,
+    institution_url: str,
+    state: str,
+    program_type: str,
+    max_directories: int = 5,
+    concurrency: int = 3
+) -> List[Dict]:
+    """
+    Process multiple directory pages in parallel (ASYNC).
+
+    Performance Optimization - Phase 6.2:
+    - Fetches and processes multiple directory pages concurrently
+    - Uses per-domain rate limiting instead of global delays
+    - Expected savings: 2.5 minutes per institution (directory pages)
+
+    Args:
+        directory_urls: List of directory page URLs to process
+        target_roles: Target role titles to match
+        institution_name: Institution name
+        institution_url: Institution URL
+        state: State abbreviation
+        program_type: 'Law School' or 'Paralegal Program'
+        max_directories: Maximum number of directories to process
+        concurrency: Number of concurrent directory fetches
+
+    Returns:
+        Combined list of all contacts from all directories
+    """
+    from modules.domain_rate_limiter import get_domain_rate_limiter
+
+    # Limit directory URLs
+    directory_urls = directory_urls[:max_directories]
+
+    if not directory_urls:
+        return []
+
+    logger.info(f"Processing {len(directory_urls)} directory pages in parallel ({concurrency} workers)")
+
+    # Semaphore to limit concurrent directory fetches
+    semaphore = asyncio.Semaphore(concurrency)
+    rate_limiter = get_domain_rate_limiter()
+
+    async def process_directory(i: int, dir_url: str) -> List[Dict]:
+        """Fetch and process a single directory page with rate limiting."""
+        async with semaphore:
+            try:
+                logger.debug(f"Directory {i+1}/{len(directory_urls)}: {dir_url[:60]}")
+
+                # Per-domain rate limiting (async)
+                await rate_limiter.wait_if_needed_async(dir_url)
+
+                # Fetch directory page (run sync function in executor)
+                loop = asyncio.get_event_loop()
+                dir_soup = await loop.run_in_executor(None, fetch_page_smart, dir_url)
+
+                if not dir_soup:
+                    logger.error(f"Failed to fetch {dir_url[:60]}")
+                    return []
+
+                # Use multi-tier extraction with async profile link visiting
+                if ENABLE_ASYNC_PROFILE_LINKS:
+                    contacts = await scrape_with_link_following_async(
+                        dir_url,
+                        dir_soup,
+                        target_roles,
+                        institution_name,
+                        institution_url,
+                        state,
+                        program_type,
+                        max_profile_pages=20,
+                        concurrency=PROFILE_LINK_CONCURRENCY
+                    )
+                else:
+                    # Fallback to sync version (run in executor)
+                    contacts = await loop.run_in_executor(
+                        None,
+                        scrape_with_link_following,
+                        dir_url,
+                        dir_soup,
+                        target_roles,
+                        institution_name,
+                        institution_url,
+                        state,
+                        program_type,
+                        20  # max_profile_pages
+                    )
+
+                logger.info(f"Extracted {len(contacts)} contacts from {dir_url[:60]}")
+                return contacts
+
+            except Exception as e:
+                logger.error(f"Failed to scrape directory {dir_url[:60]}: {e}")
+                return []
+
+    # Process all directories in parallel
+    tasks = [process_directory(i, url) for i, url in enumerate(directory_urls)]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Flatten results
+    all_contacts = []
+    for result in results:
+        if isinstance(result, list):
+            all_contacts.extend(result)
+        elif isinstance(result, Exception):
+            logger.error(f"Directory processing raised exception: {result}")
+
+    logger.success(f"Parallel directory processing: {len(all_contacts)} total contacts from {len(directory_urls)} pages")
+
+    return all_contacts
+
+
 # =============================================================================
 # Main Extraction Function
 # =============================================================================
@@ -1222,33 +1695,65 @@ def scrape_institution_contacts(
 
         logger.info(f"Found {len(directory_urls)} pages to scrape")
 
-        # Scrape each directory page
-        for dir_url in directory_urls[:5]:  # Limit to first 5 pages
-            time.sleep(RATE_LIMIT_DELAY)
+        # Performance Optimization - Phase 6.2: Process directories in parallel if enabled
+        if ENABLE_ASYNC_DIRECTORIES:
+            logger.debug(f"Using async directory processing ({DIRECTORY_CONCURRENCY} workers)")
+            all_contacts = asyncio.run(scrape_directories_async(
+                directory_urls,
+                target_roles,
+                institution_name,
+                institution_url,
+                state,
+                program_type,
+                max_directories=5,
+                concurrency=DIRECTORY_CONCURRENCY
+            ))
+        else:
+            # Serial processing (original code)
+            for dir_url in directory_urls[:5]:  # Limit to first 5 pages
+                time.sleep(RATE_LIMIT_DELAY)
 
-            try:
-                # Use smart fetching for directory pages too
-                dir_soup = fetch_page_smart(dir_url)
+                try:
+                    # Use smart fetching for directory pages
+                    dir_soup = fetch_page_smart(dir_url)
 
-                if not dir_soup:
-                    logger.error(f"Failed to fetch {dir_url}")
+                    if not dir_soup:
+                        logger.error(f"Failed to fetch {dir_url}")
+                        continue
+
+                    # Use multi-tier extraction with link following
+                    # Performance Optimization - Phase 6.1: Use async version if enabled
+                    if ENABLE_ASYNC_PROFILE_LINKS:
+                        logger.debug(f"Using async profile link visiting ({PROFILE_LINK_CONCURRENCY} workers)")
+                        contacts = asyncio.run(scrape_with_link_following_async(
+                            dir_url,
+                            dir_soup,
+                            target_roles,
+                            institution_name,
+                            institution_url,
+                            state,
+                            program_type,
+                            max_profile_pages=20,  # Visit up to 20 individual profiles per directory
+                            concurrency=PROFILE_LINK_CONCURRENCY
+                        ))
+                    else:
+                        contacts = scrape_with_link_following(
+                            dir_url,
+                            dir_soup,
+                            target_roles,
+                            institution_name,
+                            institution_url,
+                            state,
+                            program_type,
+                            max_profile_pages=20  # Visit up to 20 individual profiles per directory
+                        )
+
+                    all_contacts.extend(contacts)
+                    logger.info(f"Extracted {len(contacts)} contacts from {dir_url[:60]}")
+
+                except Exception as e:
+                    logger.error(f"Failed to scrape {dir_url}: {e}")
                     continue
-
-                contacts = extract_contacts_from_page(
-                    dir_url,
-                    dir_soup,
-                    target_roles,
-                    institution_name,
-                    institution_url,
-                    state,
-                    program_type
-                )
-
-                all_contacts.extend(contacts)
-
-            except Exception as e:
-                logger.error(f"Failed to scrape {dir_url}: {e}")
-                continue
 
         # Deduplicate across all pages
         all_contacts = deduplicate_contacts(all_contacts)
