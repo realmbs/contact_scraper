@@ -35,6 +35,9 @@ secrets.json
 # Output & Cache Directories
 /output/*
 !/output/.gitkeep
+/output/cache/*_*.csv
+!/output/cache/.gitkeep
+/output/*.xlsx
 /logs/*
 !/logs/.gitkeep
 *.log
@@ -66,3 +69,7 @@ playwright/.cache/
 # Jupyter Notebooks (if used for testing)
 .ipynb_checkpoints/
 *.ipynb
+
+.claude
+CLAUDE.md
+CLAUDE.*.md
