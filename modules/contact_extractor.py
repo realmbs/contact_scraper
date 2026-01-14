@@ -7,6 +7,7 @@ Uses intelligent directory discovery, fuzzy title matching, and email pattern de
 
 import re
 import time
+import signal
 import asyncio
 from typing import List, Dict, Optional, Tuple, Set
 from urllib.parse import urljoin, urlparse
@@ -74,6 +75,32 @@ from modules.email_deobfuscator import get_email_deobfuscator
 
 # Initialize logger
 setup_logger("contact_extractor")
+
+# =============================================================================
+# Signal Handling for Graceful Shutdown (Progressive Saves Feature)
+# =============================================================================
+
+# Global shutdown flag for Ctrl+C handling
+_shutdown_requested = False
+
+def _signal_handler(sig, frame):
+    """Handle SIGINT (Ctrl+C) and SIGTERM gracefully"""
+    global _shutdown_requested
+    if not _shutdown_requested:  # Only log once
+        _shutdown_requested = True
+        logger.warning("=" * 70)
+        logger.warning("SHUTDOWN REQUESTED - Finishing current institutions...")
+        logger.warning("Partial results will be saved. Press Ctrl+C again to force quit.")
+        logger.warning("=" * 70)
+    else:
+        logger.error("Force quit requested. Exiting immediately...")
+        raise KeyboardInterrupt
+
+def setup_signal_handlers():
+    """Register signal handlers for graceful shutdown"""
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+    logger.debug("Signal handlers registered for graceful shutdown")
 
 # Initialize timeout manager (Sprint 3.3)
 timeout_manager = get_timeout_manager(default_timeout=PLAYWRIGHT_TIMEOUT)
@@ -311,6 +338,76 @@ def fetch_page_static(url: str) -> Optional[BeautifulSoup]:
         return None
 
 
+async def fetch_page_static_async(url: str) -> Optional[BeautifulSoup]:
+    """
+    Async version of fetch_page_static using httpx (Sprint 2.2).
+
+    Integrates with timeout_manager and domain_rate_limiter for
+    adaptive performance tuning.
+
+    Args:
+        url: URL to fetch
+
+    Returns:
+        BeautifulSoup object or None if failed
+    """
+    import httpx
+    from modules.timeout_manager import get_timeout_manager
+    from modules.domain_rate_limiter import get_domain_rate_limiter
+    import time
+
+    timeout_manager = get_timeout_manager()
+    rate_limiter = get_domain_rate_limiter()
+
+    # Async rate limiting (wait if needed)
+    await rate_limiter.wait_if_needed_async(url)
+
+    # Get adaptive timeout for this domain
+    timeout = timeout_manager.get_timeout(url)
+
+    headers = {
+        'User-Agent': get_user_agent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+    }
+
+    try:
+        logger.info(f"Fetching (async static): {url}")
+        start_time = time.time()
+
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            response = await client.get(url, headers=headers)
+            response.raise_for_status()
+
+            elapsed = time.time() - start_time
+
+            # Record success with load time for adaptive learning
+            timeout_manager.record_success(url, elapsed)
+            rate_limiter.record_success(url)
+
+            soup = BeautifulSoup(response.text, 'html.parser')
+            logger.success(f"Successfully fetched (async static): {url} ({elapsed:.2f}s)")
+            return soup
+
+    except httpx.TimeoutException:
+        timeout_manager.record_timeout(url)
+        logger.warning(f"Timeout fetching {url} ({timeout}s)")
+        return None
+    except httpx.HTTPStatusError as e:
+        # Record HTTP error for fast-fail logic
+        status_code = e.response.status_code
+        timeout_manager.record_http_error(url, status_code)
+        logger.error(f"HTTP {status_code} error fetching {url}")
+        return None
+    except Exception as e:
+        # Generic error - record as HTTP 500
+        timeout_manager.record_http_error(url, 500)
+        logger.error(f"Error fetching {url}: {e}")
+        return None
+
+
 def fetch_page_smart(url: str, force_playwright: bool = False) -> Optional[BeautifulSoup]:
     """
     Smart page fetching with intelligent routing (Sprint 2.3).
@@ -387,6 +484,93 @@ def fetch_page_smart(url: str, force_playwright: bool = False) -> Optional[Beaut
 
     if ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
         playwright_soup = fetch_page_with_playwright(url)
+        success = playwright_soup is not None
+        router.record_fetch_result(url, 'playwright', success, 1 if success else 0)
+        return playwright_soup
+
+    return None
+
+
+async def fetch_page_smart_async(
+    url: str,
+    force_playwright: bool = False,
+    browser_pool=None
+) -> Optional[BeautifulSoup]:
+    """
+    Async version of fetch_page_smart with browser pool support (Sprint 2.2).
+
+    Smart routing between static (httpx) and Playwright (browser pool) based on:
+    - URL patterns (directory, API endpoints, etc.)
+    - Historical success rates per domain
+    - Page content analysis
+
+    Args:
+        url: URL to fetch
+        force_playwright: Skip static fetch and use Playwright directly
+        browser_pool: Optional browser pool instance for Playwright fetches
+
+    Returns:
+        BeautifulSoup object or None if failed
+    """
+    from modules.fetch_router import get_fetch_router
+    router = get_fetch_router()
+
+    # Get routing recommendation
+    use_playwright, reason = router.should_use_playwright(url, force=force_playwright)
+
+    if use_playwright and ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
+        logger.info(f"Routing to Playwright (async): {reason}")
+        soup = await fetch_page_with_playwright_async(url, browser_pool=browser_pool)
+        router.record_fetch_result(url, 'playwright', soup is not None)
+        return soup
+
+    # Router recommended static - try it first
+    logger.info(f"Routing to static (async): {reason}")
+    soup = await fetch_page_static_async(url)
+
+    if soup:
+        # Check if page has meaningful contact content
+        text_content = soup.get_text(strip=True)
+
+        # Count potential contact indicators
+        has_emails = len(soup.find_all('a', href=re.compile(r'mailto:', re.I)))
+        has_contact_sections = len(soup.find_all(['div', 'section', 'article'], class_=lambda x: x and any(
+            keyword in str(x).lower() for keyword in ['profile', 'person', 'staff', 'faculty', 'contact']
+        )))
+
+        # Determine if static fetch was successful
+        has_content = has_emails > 5 or has_contact_sections > 5
+        lacks_content = len(text_content) < 500 or (has_emails == 0 and has_contact_sections == 0)
+
+        # Record result
+        if has_content:
+            logger.debug(f"Page has contact indicators (emails: {has_emails}, sections: {has_contact_sections})")
+            router.record_fetch_result(url, 'static', True, has_emails + has_contact_sections)
+            return soup
+
+        # Page lacks contact data - try Playwright as fallback
+        if lacks_content:
+            logger.info(f"Page lacks contact data (chars: {len(text_content)}, emails: {has_emails}, sections: {has_contact_sections}), trying Playwright...")
+            router.record_fetch_result(url, 'static', False, 0)
+
+            if ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
+                playwright_soup = await fetch_page_with_playwright_async(url, browser_pool=browser_pool)
+                if playwright_soup:
+                    router.record_fetch_result(url, 'playwright', True)
+                    return playwright_soup
+                else:
+                    router.record_fetch_result(url, 'playwright', False, 0)
+
+        # Static worked but no strong indicators - return it anyway
+        router.record_fetch_result(url, 'static', True, 1)
+        return soup
+
+    # Static fetch failed completely - try Playwright
+    logger.info("Static fetch failed, trying Playwright...")
+    router.record_fetch_result(url, 'static', False, 0)
+
+    if ENABLE_PLAYWRIGHT and PLAYWRIGHT_AVAILABLE:
+        playwright_soup = await fetch_page_with_playwright_async(url, browser_pool=browser_pool)
         success = playwright_soup is not None
         router.record_fetch_result(url, 'playwright', success, 1 if success else 0)
         return playwright_soup
@@ -1391,7 +1575,8 @@ async def scrape_with_link_following_async(
     state: str,
     program_type: str,
     max_profile_pages: int = 20,
-    concurrency: int = 3
+    concurrency: int = 3,
+    browser_pool=None
 ) -> List[Dict]:
     """
     Multi-tier extraction with parallel profile link visiting (ASYNC).
@@ -1478,9 +1663,8 @@ async def scrape_with_link_following_async(
                         # Per-domain rate limiting (async)
                         await rate_limiter.wait_if_needed_async(profile_link.url)
 
-                        # Fetch profile page (run sync function in executor)
-                        loop = asyncio.get_event_loop()
-                        profile_soup = await loop.run_in_executor(None, fetch_page_smart, profile_link.url)
+                        # Fetch profile page (async with browser pool)
+                        profile_soup = await fetch_page_smart_async(profile_link.url, browser_pool=browser_pool)
 
                         if not profile_soup:
                             logger.debug(f"    Failed to fetch profile page")
@@ -1534,7 +1718,8 @@ async def scrape_directories_async(
     state: str,
     program_type: str,
     max_directories: int = 5,
-    concurrency: int = 3
+    concurrency: int = 3,
+    browser_pool=None
 ) -> List[Dict]:
     """
     Process multiple directory pages in parallel (ASYNC).
@@ -1580,9 +1765,8 @@ async def scrape_directories_async(
                 # Per-domain rate limiting (async)
                 await rate_limiter.wait_if_needed_async(dir_url)
 
-                # Fetch directory page (run sync function in executor)
-                loop = asyncio.get_event_loop()
-                dir_soup = await loop.run_in_executor(None, fetch_page_smart, dir_url)
+                # Fetch directory page (async with browser pool)
+                dir_soup = await fetch_page_smart_async(dir_url, browser_pool=browser_pool)
 
                 if not dir_soup:
                     logger.error(f"Failed to fetch {dir_url[:60]}")
@@ -1599,7 +1783,8 @@ async def scrape_directories_async(
                         state,
                         program_type,
                         max_profile_pages=20,
-                        concurrency=PROFILE_LINK_CONCURRENCY
+                        concurrency=PROFILE_LINK_CONCURRENCY,
+                        browser_pool=browser_pool
                     )
                 else:
                     # Fallback to sync version (run in executor)
@@ -1780,6 +1965,105 @@ def scrape_institution_contacts(
     return df
 
 
+async def scrape_institution_contacts_async(
+    institution_name: str,
+    institution_url: str,
+    state: str,
+    program_type: str,
+    browser_pool=None
+) -> pd.DataFrame:
+    """
+    Async version of scrape_institution_contacts with browser pooling (Sprint 2.2).
+
+    Uses native async/await throughout - no thread pool executors.
+    Integrates with browser pool for efficient Playwright usage.
+
+    Args:
+        institution_name: Name of institution
+        institution_url: Institution's website URL
+        state: State abbreviation
+        program_type: 'Law School' or 'Paralegal Program'
+        browser_pool: Optional browser pool instance
+
+    Returns:
+        DataFrame of contacts found
+    """
+    logger.info("=" * 70)
+    logger.info(f"[ASYNC] Scraping: {institution_name}")
+    logger.info(f"URL: {institution_url}")
+    logger.info("=" * 70)
+
+    all_contacts = []
+
+    # Determine which roles to target
+    if program_type == 'Law School':
+        target_roles = LAW_SCHOOL_ROLES
+        prog_type_short = 'law'
+    else:
+        target_roles = PARALEGAL_PROGRAM_ROLES
+        prog_type_short = 'paralegal'
+
+    try:
+        # Fetch homepage using async smart fetching
+        logger.info(f"Fetching homepage for {institution_name}...")
+        soup = await fetch_page_smart_async(institution_url, browser_pool=browser_pool)
+
+        if not soup:
+            logger.error(f"Failed to fetch homepage for {institution_name}")
+            return pd.DataFrame()
+
+        # Find directory pages (sync parsing, but fast)
+        logger.info(f"Finding directory pages for {institution_name}...")
+        directory_urls = find_directory_pages(institution_url, soup, prog_type_short)
+
+        if not directory_urls:
+            logger.warning(f"No directory pages found for {institution_name}, trying homepage")
+            directory_urls = [institution_url]
+
+        logger.info(f"Found {len(directory_urls)} directory pages for {institution_name}")
+
+        # Scrape directories asynchronously with browser pool
+        all_contacts = await scrape_directories_async(
+            directory_urls,
+            target_roles,
+            institution_name,
+            institution_url,
+            state,
+            program_type,
+            max_directories=5,
+            concurrency=DIRECTORY_CONCURRENCY,
+            browser_pool=browser_pool  # Pass pool through
+        )
+
+        if not all_contacts:
+            logger.warning(f"No contacts extracted from {institution_name}")
+            return pd.DataFrame()
+
+        # Deduplicate across all pages
+        all_contacts = deduplicate_contacts(all_contacts)
+
+        logger.success(f"Found {len(all_contacts)} contacts at {institution_name}")
+
+    except Exception as e:
+        logger.error(f"Error scraping {institution_name}: {e}", exc_info=True)
+
+    # Convert to DataFrame
+    if all_contacts:
+        df = pd.DataFrame(all_contacts)
+    else:
+        # Return empty DataFrame with proper columns
+        df = pd.DataFrame(columns=[
+            'institution_name', 'institution_url', 'state', 'program_type',
+            'first_name', 'last_name', 'full_name', 'title', 'matched_role',
+            'email', 'phone', 'confidence_score', 'title_match_score',
+            'extraction_method', 'source_url', 'extracted_at'
+        ])
+
+    logger.info("=" * 70)
+
+    return df
+
+
 # =============================================================================
 # Batch Processing
 # =============================================================================
@@ -1842,10 +2126,15 @@ async def scrape_institution_async(
     program_type: str,
     semaphore: asyncio.Semaphore,
     institution_num: int,
-    total_institutions: int
+    total_institutions: int,
+    browser_pool=None
 ) -> pd.DataFrame:
     """
-    Async wrapper for scraping a single institution.
+    Async wrapper for scraping a single institution with feature flag routing (Sprint 2.2).
+
+    Routes between two paths based on USE_BROWSER_POOL feature flag:
+    - True: Native async with browser pool (new path)
+    - False: Thread pool executor (legacy path, backward compatible)
 
     Args:
         institution_name: Name of institution
@@ -1855,36 +2144,61 @@ async def scrape_institution_async(
         semaphore: Asyncio semaphore for concurrency control
         institution_num: Current institution number (for logging)
         total_institutions: Total number of institutions (for logging)
+        browser_pool: Optional browser pool instance (used when USE_BROWSER_POOL=True)
 
     Returns:
         DataFrame of contacts
     """
+    from config.settings import USE_BROWSER_POOL
+
     async with semaphore:
         logger.info(f"[{institution_num}/{total_institutions}] Starting: {institution_name}")
 
-        # Run the synchronous scraping function in executor
-        loop = asyncio.get_event_loop()
-        contacts_df = await loop.run_in_executor(
-            None,  # Use default executor
-            scrape_institution_contacts,
-            institution_name,
-            institution_url,
-            state,
-            program_type
-        )
+        start_time = time.time()
 
-        if not contacts_df.empty:
-            logger.success(f"[{institution_num}/{total_institutions}] Completed: {institution_name} ({len(contacts_df)} contacts)")
-        else:
-            logger.warning(f"[{institution_num}/{total_institutions}] Completed: {institution_name} (0 contacts)")
+        try:
+            if USE_BROWSER_POOL:
+                # NEW: Native async path with browser pool
+                logger.debug(f"Using browser pool for {institution_name}")
+                contacts_df = await scrape_institution_contacts_async(
+                    institution_name,
+                    institution_url,
+                    state,
+                    program_type,
+                    browser_pool=browser_pool
+                )
+            else:
+                # OLD: Thread pool executor (backward compatible)
+                logger.debug(f"Using thread pool executor for {institution_name}")
+                loop = asyncio.get_event_loop()
+                contacts_df = await loop.run_in_executor(
+                    None,  # Use default executor
+                    scrape_institution_contacts,
+                    institution_name,
+                    institution_url,
+                    state,
+                    program_type
+                )
 
-        return contacts_df
+            elapsed = time.time() - start_time
+
+            if not contacts_df.empty:
+                logger.success(f"[{institution_num}/{total_institutions}] Completed: {institution_name} ({len(contacts_df)} contacts, {elapsed:.1f}s)")
+            else:
+                logger.warning(f"[{institution_num}/{total_institutions}] Completed: {institution_name} (0 contacts, {elapsed:.1f}s)")
+
+            return contacts_df
+
+        except Exception as e:
+            logger.error(f"[{institution_num}/{total_institutions}] Failed: {institution_name}: {e}")
+            return pd.DataFrame()
 
 
 async def scrape_multiple_institutions_async(
     institutions_df: pd.DataFrame,
     max_institutions: Optional[int] = None,
-    max_parallel: int = 6
+    max_parallel: int = 6,
+    streaming_writer: Optional['StreamingContactWriter'] = None
 ) -> pd.DataFrame:
     """
     Scrape contacts from multiple institutions in parallel using asyncio.
@@ -1893,13 +2207,28 @@ async def scrape_multiple_institutions_async(
         institutions_df: DataFrame with institution info (from target_discovery)
         max_institutions: Maximum number of institutions to scrape (None = all)
         max_parallel: Maximum number of parallel workers (default: 6)
+        streaming_writer: Optional writer for progressive saves (enables resume capability)
 
     Returns:
         Combined DataFrame of all contacts
     """
+    # Resume logic: skip already-completed institutions
+    original_count = len(institutions_df)
+    if streaming_writer and streaming_writer.institutions_completed:
+        completed_names = streaming_writer.institutions_completed
+        institutions_df = institutions_df[~institutions_df['name'].isin(completed_names)].copy()
+        skipped = original_count - len(institutions_df)
+        if skipped > 0:
+            logger.warning("=" * 70)
+            logger.warning(f"RESUMING: Skipping {skipped} already-completed institutions")
+            logger.warning(f"Completed institutions loaded from: {streaming_writer.resume_file}")
+            logger.warning("=" * 70)
+
     logger.info("=" * 70)
     logger.info(f"Starting ASYNC batch scraping of {len(institutions_df)} institutions")
     logger.info(f"Max parallel workers: {max_parallel}")
+    if streaming_writer:
+        logger.info(f"Progressive saves: ENABLED ({streaming_writer.output_file})")
     logger.info("=" * 70)
 
     # Limit number of institutions if specified
@@ -1907,66 +2236,114 @@ async def scrape_multiple_institutions_async(
         institutions_df = institutions_df.head(max_institutions)
         logger.info(f"Limited to {max_institutions} institutions for testing")
 
-    # Create semaphore to limit concurrency
-    semaphore = asyncio.Semaphore(max_parallel)
+    # Initialize browser pool if USE_BROWSER_POOL is enabled
+    from config.settings import USE_BROWSER_POOL
+    browser_pool = None
+    if USE_BROWSER_POOL:
+        try:
+            from modules.browser_pool import get_browser_pool, close_browser_pool
+            logger.info(f"Initializing browser pool (size=3)...")
+            browser_pool = await get_browser_pool(pool_size=3)
+            logger.info("✓ Browser pool initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize browser pool: {e}")
+            logger.warning("Falling back to thread pool executor mode")
+            # Continue without pool (USE_BROWSER_POOL will route to executor)
 
-    # Create tasks for all institutions
-    tasks = []
-    for idx, row in institutions_df.iterrows():
-        task = scrape_institution_async(
-            institution_name=row['name'],
-            institution_url=row['url'],
-            state=row['state'],
-            program_type=row['type'],
-            semaphore=semaphore,
-            institution_num=idx + 1,
-            total_institutions=len(institutions_df)
-        )
-        tasks.append(task)
+    try:
+        # Create semaphore to limit concurrency
+        semaphore = asyncio.Semaphore(max_parallel)
 
-    # Run all tasks concurrently
-    logger.info(f"\nLaunching {len(tasks)} async scraping tasks...")
-    start_time = time.time()
+        # Create tasks for all institutions (check shutdown flag before creating each task)
+        tasks = []
+        institution_names = []  # Track names for streaming writer
+        for idx, row in institutions_df.iterrows():
+            # Check if shutdown was requested
+            global _shutdown_requested
+            if _shutdown_requested:
+                logger.warning(f"Shutdown requested before creating task for {row['name']}. Stopping task creation.")
+                break
 
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+            task = scrape_institution_async(
+                institution_name=row['name'],
+                institution_url=row['url'],
+                state=row['state'],
+                program_type=row['type'],
+                semaphore=semaphore,
+                institution_num=idx + 1,
+                total_institutions=len(institutions_df),
+                browser_pool=browser_pool  # Pass pool to all tasks
+            )
+            tasks.append(task)
+            institution_names.append(row['name'])
 
-    elapsed = time.time() - start_time
-    logger.success(f"\nAll tasks completed in {elapsed:.1f} seconds")
-    logger.info(f"Average: {elapsed / len(tasks):.1f}s per institution (with {max_parallel}x parallelization)")
+        # Run all tasks concurrently
+        logger.info(f"\nLaunching {len(tasks)} async scraping tasks...")
+        start_time = time.time()
 
-    # Filter out exceptions and combine results
-    all_contacts = []
-    success_count = 0
-    error_count = 0
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    for i, result in enumerate(results):
-        if isinstance(result, Exception):
-            logger.error(f"Task {i+1} failed with error: {result}")
-            error_count += 1
-        elif isinstance(result, pd.DataFrame) and not result.empty:
-            all_contacts.append(result)
-            success_count += 1
+        elapsed = time.time() - start_time
+        logger.success(f"\nAll tasks completed in {elapsed:.1f} seconds")
+        logger.info(f"Average: {elapsed / len(tasks):.1f}s per institution (with {max_parallel}x parallelization)")
 
-    logger.info(f"\nResults summary:")
-    logger.info(f"  Successful: {success_count}/{len(tasks)}")
-    logger.info(f"  Failed: {error_count}/{len(tasks)}")
-    logger.info(f"  Empty: {len(tasks) - success_count - error_count}/{len(tasks)}")
+        # Filter out exceptions and combine results
+        all_contacts = []
+        success_count = 0
+        error_count = 0
 
-    # Combine all results
-    if all_contacts:
-        combined_df = pd.concat(all_contacts, ignore_index=True)
-        logger.success(f"Total contacts extracted: {len(combined_df)}")
-    else:
-        logger.warning("No contacts extracted from any institution")
-        combined_df = pd.DataFrame()
+        for i, result in enumerate(results):
+            institution_name = institution_names[i] if i < len(institution_names) else f"Institution {i+1}"
 
-    return combined_df
+            if isinstance(result, Exception):
+                logger.error(f"Task {i+1} ({institution_name}) failed with error: {result}")
+                error_count += 1
+            elif isinstance(result, pd.DataFrame) and not result.empty:
+                all_contacts.append(result)
+                success_count += 1
+
+                # Progressive save: write to streaming writer immediately
+                if streaming_writer:
+                    try:
+                        contacts_dict = result.to_dict('records')
+                        streaming_writer.write_contacts(contacts_dict, institution_name)
+                        streaming_writer.mark_institution_completed(institution_name)
+                        logger.debug(f"✓ Saved {len(contacts_dict)} contacts from {institution_name} to disk")
+                    except Exception as e:
+                        logger.error(f"Failed to write contacts from {institution_name} to streaming writer: {e}")
+
+        logger.info(f"\nResults summary:")
+        logger.info(f"  Successful: {success_count}/{len(tasks)}")
+        logger.info(f"  Failed: {error_count}/{len(tasks)}")
+        logger.info(f"  Empty: {len(tasks) - success_count - error_count}/{len(tasks)}")
+
+        # Combine all results
+        if all_contacts:
+            combined_df = pd.concat(all_contacts, ignore_index=True)
+            logger.success(f"Total contacts extracted: {len(combined_df)}")
+        else:
+            logger.warning("No contacts extracted from any institution")
+            combined_df = pd.DataFrame()
+
+        return combined_df
+
+    finally:
+        # Cleanup browser pool
+        if browser_pool and USE_BROWSER_POOL:
+            try:
+                logger.info("Closing browser pool...")
+                from modules.browser_pool import close_browser_pool
+                await close_browser_pool()
+                logger.info("✓ Browser pool closed")
+            except Exception as e:
+                logger.error(f"Error closing browser pool: {e}")
 
 
 def run_async_scraping(
     institutions_df: pd.DataFrame,
     max_institutions: Optional[int] = None,
-    max_parallel: int = 6
+    max_parallel: int = 6,
+    streaming_writer: Optional['StreamingContactWriter'] = None
 ) -> pd.DataFrame:
     """
     Synchronous wrapper for async scraping.
@@ -1976,10 +2353,14 @@ def run_async_scraping(
         institutions_df: DataFrame with institution info
         max_institutions: Maximum number of institutions to scrape
         max_parallel: Maximum number of parallel workers
+        streaming_writer: Optional writer for progressive saves
 
     Returns:
         Combined DataFrame of all contacts
     """
+    # Set up signal handlers for graceful shutdown
+    setup_signal_handlers()
+
     # Get or create event loop
     try:
         loop = asyncio.get_event_loop()
@@ -1989,7 +2370,12 @@ def run_async_scraping(
 
     # Run async function
     return loop.run_until_complete(
-        scrape_multiple_institutions_async(institutions_df, max_institutions, max_parallel)
+        scrape_multiple_institutions_async(
+            institutions_df,
+            max_institutions,
+            max_parallel,
+            streaming_writer
+        )
     )
 
 

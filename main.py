@@ -21,6 +21,7 @@ PERFORMANCE: Berkeley validated at 3.42x speedup (21min → 6.13min)
 import sys
 from typing import List, Optional
 
+import pandas as pd
 from loguru import logger
 from tqdm import tqdm
 
@@ -32,6 +33,7 @@ from modules.email_validator import enrich_contact_data
 from modules.deduplication import deduplicate_contacts, load_existing_database, compare_with_existing
 from modules.statistics import calculate_contact_statistics
 from modules.excel_output import create_excel_workbook
+from modules.streaming_writer import StreamingContactWriter  # Progressive saves
 
 # Sprint 2-3 optimization modules (for statistics display)
 from modules.fetch_router import get_fetch_router
@@ -310,7 +312,59 @@ def main():
         # - Per-domain rate limiting (async, allows parallel domain requests)
         # Expected: 3.42x speedup validated on Berkeley (21min → 6.13min)
         logger.info("Using async architecture with 6 parallel workers + multi-tier optimizations")
-        contacts = run_async_scraping(targets, max_institutions=max_institutions, max_parallel=6)
+
+        # Create streaming writer for progressive saves and Ctrl+C support
+        from modules.utils import get_timestamp
+        progressive_csv = OUTPUT_DIR / f'contacts_progressive_{get_timestamp()}.csv'
+        resume_state_file = OUTPUT_DIR / 'resume_state.json'
+
+        streaming_writer = StreamingContactWriter(
+            output_file=str(progressive_csv),
+            resume_file=str(resume_state_file)
+        )
+
+        # Load resume state if exists
+        streaming_writer.load_resume_state()
+        if streaming_writer.institutions_completed:
+            logger.warning(f"Found resume state: {len(streaming_writer.institutions_completed)} institutions already completed")
+            logger.warning("Use Ctrl+C at any time to save progress and exit gracefully")
+        else:
+            logger.info("Progressive saves enabled - use Ctrl+C at any time to save progress")
+
+        # Run scraping with progressive saves
+        try:
+            contacts = run_async_scraping(
+                targets,
+                max_institutions=max_institutions,
+                max_parallel=6,
+                streaming_writer=streaming_writer
+            )
+        except KeyboardInterrupt:
+            # Graceful shutdown - load what was saved
+            print("\n\n" + "=" * 70)
+            print("SCRAPING INTERRUPTED - LOADING SAVED PROGRESS")
+            print("=" * 70)
+            print()
+
+            if progressive_csv.exists():
+                logger.info(f"Loading {streaming_writer.contacts_written} contacts from {progressive_csv}")
+                contacts = pd.read_csv(progressive_csv)
+                logger.success(f"Loaded {len(contacts)} contacts from progressive save file")
+
+                # Show progress summary
+                completed = len(streaming_writer.institutions_completed)
+                total = len(targets) if max_institutions is None else min(max_institutions, len(targets))
+                print(f"\nProgress: {completed}/{total} institutions completed ({completed/total*100:.1f}%)")
+                print(f"Contacts saved: {len(contacts)}")
+                print(f"\nResume state saved to: {resume_state_file}")
+                print("To resume: Run the script again with the same parameters")
+                print("=" * 70)
+            else:
+                logger.warning("No progressive save file found - no contacts extracted yet")
+                contacts = pd.DataFrame()  # Empty DataFrame
+
+                # Re-raise to exit gracefully
+                raise
 
         # Phase 3: Email Validation & Enrichment (if contacts found)
         if not contacts.empty:

@@ -113,6 +113,9 @@ DIRECTORY_CONCURRENCY = _get_int('DIRECTORY_CONCURRENCY', 3)  # 3 concurrent dir
 ENABLE_BROWSER_POOL = _get_bool('ENABLE_BROWSER_POOL', True)  # Enable by default
 BROWSER_POOL_SIZE = _get_int('BROWSER_POOL_SIZE', 3)  # 3 persistent browser instances
 
+# Async refactor with browser pool integration (Sprint 2.2)
+USE_BROWSER_POOL = _get_bool('USE_BROWSER_POOL', False)  # Safe default - native async with browser pooling
+
 # Timeouts
 REQUEST_TIMEOUT = _get_int('REQUEST_TIMEOUT', 30)
 

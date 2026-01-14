@@ -37,11 +37,15 @@ class StreamingContactWriter:
         Initialize streaming writer.
 
         Args:
-            output_file: Path to CSV file for contacts
-            resume_file: Path to JSON file tracking completed institutions
+            output_file: Path to CSV file for contacts (can be string or Path)
+            resume_file: Path to JSON file tracking completed institutions (can be string or Path)
         """
-        self.output_file = output_file
-        self.resume_file = resume_file or output_file.parent / "resume_state.json"
+        # Convert to Path objects if strings
+        self.output_file = Path(output_file) if isinstance(output_file, str) else output_file
+        if resume_file:
+            self.resume_file = Path(resume_file) if isinstance(resume_file, str) else resume_file
+        else:
+            self.resume_file = self.output_file.parent / "resume_state.json"
 
         self.contacts_written = 0
         self.institutions_completed = []

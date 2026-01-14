@@ -33,6 +33,7 @@ from config.settings import (
     REQUEST_TIMEOUT,
     RATE_LIMIT_DELAY,
     MIN_EMAIL_SCORE,
+    APIS_AVAILABLE,
 )
 from config.api_clients import (
     validate_email_with_hunter,
@@ -570,6 +571,44 @@ def enrich_contact_data(contact_df: pd.DataFrame) -> pd.DataFrame:
         logger.warning("Empty contact DataFrame provided for enrichment")
         return contact_df
 
+    # Check if ANY email validation API keys are ACTUALLY configured (not placeholders)
+    def is_valid_api_key(key):
+        """Check if API key is configured (not None or placeholder)"""
+        if not key:
+            return False
+        placeholder_values = [
+            'your_hunter_api_key_here',
+            'your_zerobounce_api_key_here',
+            'your_neverbounce_api_key_here'
+        ]
+        return key not in placeholder_values
+
+    has_validation_apis = (
+        is_valid_api_key(HUNTER_API_KEY) or
+        is_valid_api_key(ZEROBOUNCE_API_KEY) or
+        is_valid_api_key(NEVERBOUNCE_API_KEY)
+    )
+
+    if not has_validation_apis:
+        logger.warning("=" * 70)
+        logger.warning("Email Validation SKIPPED - No API keys configured")
+        logger.warning("=" * 70)
+        logger.warning("To enable email validation, configure at least one API key:")
+        logger.warning("  - HUNTER_API_KEY (50 searches/month)")
+        logger.warning("  - NEVERBOUNCE_API_KEY (1000 free validations)")
+        logger.warning("  - ZEROBOUNCE_API_KEY (100 free validations)")
+        logger.warning("Add keys to .env file and restart the scraper")
+        logger.warning("=" * 70)
+
+        # Add placeholder columns so downstream code doesn't break
+        contact_df['email_status'] = 'not_validated'
+        contact_df['email_score'] = 0
+        contact_df['email_is_catchall'] = False
+        contact_df['email_is_disposable'] = False
+        contact_df['email_validation_service'] = 'none'
+
+        return contact_df
+
     logger.info("=" * 70)
     logger.info("Starting Email Enrichment Pipeline (Phase 3)")
     logger.info("=" * 70)
@@ -587,8 +626,8 @@ def enrich_contact_data(contact_df: pd.DataFrame) -> pd.DataFrame:
 
         # Merge validation results back into contact_df
         if not validation_df.empty:
-            # Create validation lookup
-            validation_lookup = validation_df.set_index('email').to_dict('index')
+            # Create validation lookup (deduplicate emails first to avoid index errors)
+            validation_lookup = validation_df.drop_duplicates(subset=['email'], keep='first').set_index('email').to_dict('index')
 
             # Add validation columns
             contact_df['email_status'] = contact_df['email'].map(
