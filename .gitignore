@@ -69,7 +69,3 @@ playwright/.cache/
 # Jupyter Notebooks (if used for testing)
 .ipynb_checkpoints/
 *.ipynb
-
-.claude
-CLAUDE.md
-CLAUDE.*.md
